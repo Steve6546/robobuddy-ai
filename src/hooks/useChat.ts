@@ -10,16 +10,16 @@ interface ChatMessage {
 }
 
 export const useChat = () => {
+  const isLoading = useChatStore((state) => state.isLoading);
+  const messages = useChatStore((state) => state.getMessages());
+
   const {
-    isLoading,
     addMessage,
     updateMessage,
     setMessageStreaming,
     setLoading,
     getMessages,
-  } = useChatStore();
-
-  const messages = useChatStore((state) => state.getMessages());
+  } = useChatStore.getState();
 
   const sendMessage = useCallback(
     async (content: string, attachments: Attachment[] = []) => {

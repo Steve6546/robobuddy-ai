@@ -19,6 +19,8 @@ export interface Message {
   isStreaming?: boolean;
 }
 
+const EMPTY_MESSAGES: Message[] = [];
+
 export interface Conversation {
   id: string;
   title: string;
@@ -188,8 +190,9 @@ export const useChatStore = create<ChatState>()(
       },
 
       getMessages: () => {
-        const conversation = get().getCurrentConversation();
-        return conversation?.messages || [];
+        const state = get();
+        const conversation = state.conversations.find((c) => c.id === state.currentConversationId);
+        return conversation?.messages || EMPTY_MESSAGES;
       },
     }),
     {
