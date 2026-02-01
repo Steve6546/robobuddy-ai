@@ -18,6 +18,7 @@ export const useChat = () => {
     updateMessage,
     setMessageStreaming,
     setLoading,
+    setAssistantTyping,
     getMessages,
   } = useChatStore.getState();
 
@@ -33,6 +34,7 @@ export const useChat = () => {
       });
 
       setLoading(true);
+      setAssistantTyping(true);
 
       // Prepare messages for API - get fresh messages
       const currentMessages = getMessages();
@@ -98,12 +100,12 @@ export const useChat = () => {
           const error = await response.json().catch(() => ({}));
           
           if (response.status === 429) {
-            throw new Error('تم تجاوز الحد المسموح. يرجى الانتظار قليلاً.');
+            throw new Error('تم تجاوز الحد المسموح. يرجى الانتظار قليلاً (Rate Limit).');
           }
           if (response.status === 402) {
-            throw new Error('نفدت الرصيد. يرجى إضافة المزيد للمتابعة.');
+            throw new Error('نفدت الرصيد في بوابة الذكاء الاصطناعي (Payment Required). يرجى التأكد من توفر الرصيد في حساب Lovable الخاص بك للمتابعة.');
           }
-          throw new Error(error.error || 'فشل في الحصول على الرد');
+          throw new Error(error.error || 'فشل في الحصول على الرد من الخادم');
         }
 
         if (!response.body) {
@@ -138,6 +140,9 @@ export const useChat = () => {
               const parsed = JSON.parse(jsonStr);
               const content = parsed.choices?.[0]?.delta?.content as string | undefined;
               if (content) {
+                if (fullContent === '') {
+                  setAssistantTyping(false);
+                }
                 fullContent += content;
                 updateMessage(assistantId, fullContent);
               }
@@ -179,9 +184,10 @@ export const useChat = () => {
         toast.error(errorMessage);
       } finally {
         setLoading(false);
+        setAssistantTyping(false);
       }
     },
-    [addMessage, updateMessage, setMessageStreaming, setLoading, getMessages]
+    [addMessage, updateMessage, setMessageStreaming, setLoading, setAssistantTyping, getMessages]
   );
 
   return {
