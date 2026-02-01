@@ -10,13 +10,13 @@ interface ConversationSidebarProps {
 }
 
 export const ConversationSidebar = ({ isOpen, onClose }: ConversationSidebarProps) => {
+  const conversations = useChatStore((state) => state.conversations);
+  const currentConversationId = useChatStore((state) => state.currentConversationId);
   const {
-    conversations,
-    currentConversationId,
     createConversation,
     setCurrentConversation,
     deleteConversation,
-  } = useChatStore();
+  } = useChatStore.getState();
 
   const handleNewChat = () => {
     createConversation();
