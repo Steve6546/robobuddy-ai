@@ -27,6 +27,8 @@ export interface Conversation {
   messages: Message[];
   createdAt: Date;
   updatedAt: Date;
+  unreadCount: number;
+  draft: string;
 }
 
 interface ChatState {
@@ -34,17 +36,20 @@ interface ChatState {
   currentConversationId: string | null;
   isLoading: boolean;
   pendingAttachments: Attachment[];
+  visibleConversationsCount: number;
   
   // Conversation actions
   createConversation: () => string;
   setCurrentConversation: (id: string) => void;
   deleteConversation: (id: string) => void;
   updateConversationTitle: (id: string, title: string) => void;
+  loadMoreConversations: () => void;
   
   // Message actions
-  addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => string;
+  addMessage: (message: Omit<Message, 'id' | 'timestamp'>, conversationId?: string) => string;
   updateMessage: (id: string, content: string) => void;
   setMessageStreaming: (id: string, isStreaming: boolean) => void;
+  setDraft: (id: string, draft: string) => void;
   
   // UI state
   setLoading: (loading: boolean) => void;
@@ -64,8 +69,17 @@ export const useChatStore = create<ChatState>()(
       currentConversationId: null,
       isLoading: false,
       pendingAttachments: [],
+      visibleConversationsCount: 10,
 
       createConversation: () => {
+        const state = get();
+        const emptyConversation = state.conversations.find((c) => c.messages.length === 0);
+
+        if (emptyConversation) {
+          set({ currentConversationId: emptyConversation.id });
+          return emptyConversation.id;
+        }
+
         const id = crypto.randomUUID();
         const newConversation: Conversation = {
           id,
@@ -73,6 +87,8 @@ export const useChatStore = create<ChatState>()(
           messages: [],
           createdAt: new Date(),
           updatedAt: new Date(),
+          unreadCount: 0,
+          draft: '',
         };
         set((state) => ({
           conversations: [newConversation, ...state.conversations],
@@ -82,7 +98,12 @@ export const useChatStore = create<ChatState>()(
       },
 
       setCurrentConversation: (id) => {
-        set({ currentConversationId: id });
+        set((state) => ({
+          currentConversationId: id,
+          conversations: state.conversations.map((c) =>
+            c.id === id ? { ...c, unreadCount: 0 } : c
+          ),
+        }));
       },
 
       deleteConversation: (id) => {
@@ -106,9 +127,15 @@ export const useChatStore = create<ChatState>()(
         }));
       },
 
-      addMessage: (message) => {
+      loadMoreConversations: () => {
+        set((state) => ({
+          visibleConversationsCount: state.visibleConversationsCount + 10,
+        }));
+      },
+
+      addMessage: (message, targetConversationId) => {
         const state = get();
-        let conversationId = state.currentConversationId;
+        let conversationId = targetConversationId || state.currentConversationId;
         
         // Auto-create conversation if none exists
         if (!conversationId) {
@@ -136,6 +163,7 @@ export const useChatStore = create<ChatState>()(
                 title: newTitle,
                 messages: [...c.messages, newMessage],
                 updatedAt: new Date(),
+                unreadCount: c.id === state.currentConversationId ? 0 : c.unreadCount + 1,
               };
             }
             return c;
@@ -164,6 +192,14 @@ export const useChatStore = create<ChatState>()(
               msg.id === id ? { ...msg, isStreaming } : msg
             ),
           })),
+        }));
+      },
+
+      setDraft: (id, draft) => {
+        set((state) => ({
+          conversations: state.conversations.map((c) =>
+            c.id === id ? { ...c, draft } : c
+          ),
         }));
       },
 
