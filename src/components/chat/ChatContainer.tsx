@@ -10,6 +10,7 @@ import { useChatStore } from '@/stores/chatStore';
 export const ChatContainer = () => {
   const { messages, isLoading, sendMessage } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isAssistantTyping = useChatStore((state) => state.isAssistantTyping);
   const pendingAttachments = useChatStore((state) => state.pendingAttachments);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -41,6 +42,13 @@ export const ChatContainer = () => {
             {messages.map((message) => (
               <ChatMessage key={message.id} message={message} />
             ))}
+            {isAssistantTyping && (
+              <div className="p-4 flex items-center gap-2 text-muted-foreground animate-pulse">
+                <div className="w-2 h-2 bg-foreground rounded-full animate-bounce [animation-delay:-0.3s]" />
+                <div className="w-2 h-2 bg-foreground rounded-full animate-bounce [animation-delay:-0.15s]" />
+                <div className="w-2 h-2 bg-foreground rounded-full animate-bounce" />
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         )}

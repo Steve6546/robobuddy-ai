@@ -35,6 +35,7 @@ interface ChatState {
   conversations: Conversation[];
   currentConversationId: string | null;
   isLoading: boolean;
+  isAssistantTyping: boolean;
   pendingAttachments: Attachment[];
   visibleConversationsCount: number;
   
@@ -53,9 +54,11 @@ interface ChatState {
   
   // UI state
   setLoading: (loading: boolean) => void;
+  setAssistantTyping: (isTyping: boolean) => void;
   addAttachment: (attachment: Omit<Attachment, 'id'>) => void;
   removeAttachment: (id: string) => void;
   clearAttachments: () => void;
+  syncFromStorage: () => void;
   
   // Getters
   getCurrentConversation: () => Conversation | undefined;
@@ -68,6 +71,7 @@ export const useChatStore = create<ChatState>()(
       conversations: [],
       currentConversationId: null,
       isLoading: false,
+      isAssistantTyping: false,
       pendingAttachments: [],
       visibleConversationsCount: 10,
 
@@ -205,6 +209,8 @@ export const useChatStore = create<ChatState>()(
 
       setLoading: (loading) => set({ isLoading: loading }),
 
+      setAssistantTyping: (isTyping) => set({ isAssistantTyping: isTyping }),
+
       addAttachment: (attachment) => {
         const id = crypto.randomUUID();
         set((state) => ({
@@ -219,6 +225,24 @@ export const useChatStore = create<ChatState>()(
       },
 
       clearAttachments: () => set({ pendingAttachments: [] }),
+
+      syncFromStorage: () => {
+        // Triggered by storage event to reload persisted state
+        const storage = localStorage.getItem('roblox-chat-storage');
+        if (storage) {
+          try {
+            const parsed = JSON.parse(storage);
+            if (parsed.state) {
+              set({
+                conversations: parsed.state.conversations,
+                currentConversationId: parsed.state.currentConversationId,
+              });
+            }
+          } catch (e) {
+            console.error('Failed to sync from storage:', e);
+          }
+        }
+      },
 
       getCurrentConversation: () => {
         const state = get();
