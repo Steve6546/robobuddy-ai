@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface Attachment {
   id: string;
@@ -18,70 +19,185 @@ export interface Message {
   isStreaming?: boolean;
 }
 
-interface ChatState {
+export interface Conversation {
+  id: string;
+  title: string;
   messages: Message[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface ChatState {
+  conversations: Conversation[];
+  currentConversationId: string | null;
   isLoading: boolean;
   pendingAttachments: Attachment[];
+  
+  // Conversation actions
+  createConversation: () => string;
+  setCurrentConversation: (id: string) => void;
+  deleteConversation: (id: string) => void;
+  updateConversationTitle: (id: string, title: string) => void;
+  
+  // Message actions
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => string;
   updateMessage: (id: string, content: string) => void;
   setMessageStreaming: (id: string, isStreaming: boolean) => void;
+  
+  // UI state
   setLoading: (loading: boolean) => void;
   addAttachment: (attachment: Omit<Attachment, 'id'>) => void;
   removeAttachment: (id: string) => void;
   clearAttachments: () => void;
-  clearMessages: () => void;
+  
+  // Getters
+  getCurrentConversation: () => Conversation | undefined;
+  getMessages: () => Message[];
 }
 
-export const useChatStore = create<ChatState>((set, get) => ({
-  messages: [],
-  isLoading: false,
-  pendingAttachments: [],
+export const useChatStore = create<ChatState>()(
+  persist(
+    (set, get) => ({
+      conversations: [],
+      currentConversationId: null,
+      isLoading: false,
+      pendingAttachments: [],
 
-  addMessage: (message) => {
-    const id = crypto.randomUUID();
-    const newMessage: Message = {
-      ...message,
-      id,
-      timestamp: new Date(),
-    };
-    set((state) => ({
-      messages: [...state.messages, newMessage],
-    }));
-    return id;
-  },
+      createConversation: () => {
+        const id = crypto.randomUUID();
+        const newConversation: Conversation = {
+          id,
+          title: 'محادثة جديدة',
+          messages: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        set((state) => ({
+          conversations: [newConversation, ...state.conversations],
+          currentConversationId: id,
+        }));
+        return id;
+      },
 
-  updateMessage: (id, content) => {
-    set((state) => ({
-      messages: state.messages.map((msg) =>
-        msg.id === id ? { ...msg, content } : msg
-      ),
-    }));
-  },
+      setCurrentConversation: (id) => {
+        set({ currentConversationId: id });
+      },
 
-  setMessageStreaming: (id, isStreaming) => {
-    set((state) => ({
-      messages: state.messages.map((msg) =>
-        msg.id === id ? { ...msg, isStreaming } : msg
-      ),
-    }));
-  },
+      deleteConversation: (id) => {
+        set((state) => {
+          const newConversations = state.conversations.filter((c) => c.id !== id);
+          const newCurrentId = state.currentConversationId === id
+            ? (newConversations[0]?.id || null)
+            : state.currentConversationId;
+          return {
+            conversations: newConversations,
+            currentConversationId: newCurrentId,
+          };
+        });
+      },
 
-  setLoading: (loading) => set({ isLoading: loading }),
+      updateConversationTitle: (id, title) => {
+        set((state) => ({
+          conversations: state.conversations.map((c) =>
+            c.id === id ? { ...c, title, updatedAt: new Date() } : c
+          ),
+        }));
+      },
 
-  addAttachment: (attachment) => {
-    const id = crypto.randomUUID();
-    set((state) => ({
-      pendingAttachments: [...state.pendingAttachments, { ...attachment, id }],
-    }));
-  },
+      addMessage: (message) => {
+        const state = get();
+        let conversationId = state.currentConversationId;
+        
+        // Auto-create conversation if none exists
+        if (!conversationId) {
+          conversationId = get().createConversation();
+        }
 
-  removeAttachment: (id) => {
-    set((state) => ({
-      pendingAttachments: state.pendingAttachments.filter((a) => a.id !== id),
-    }));
-  },
+        const id = crypto.randomUUID();
+        const newMessage: Message = {
+          ...message,
+          id,
+          timestamp: new Date(),
+        };
 
-  clearAttachments: () => set({ pendingAttachments: [] }),
+        set((state) => ({
+          conversations: state.conversations.map((c) => {
+            if (c.id === conversationId) {
+              // Update title from first user message
+              const shouldUpdateTitle = c.messages.length === 0 && message.role === 'user';
+              const newTitle = shouldUpdateTitle 
+                ? message.content.slice(0, 40) + (message.content.length > 40 ? '...' : '')
+                : c.title;
+              
+              return {
+                ...c,
+                title: newTitle,
+                messages: [...c.messages, newMessage],
+                updatedAt: new Date(),
+              };
+            }
+            return c;
+          }),
+        }));
 
-  clearMessages: () => set({ messages: [] }),
-}));
+        return id;
+      },
+
+      updateMessage: (id, content) => {
+        set((state) => ({
+          conversations: state.conversations.map((c) => ({
+            ...c,
+            messages: c.messages.map((msg) =>
+              msg.id === id ? { ...msg, content } : msg
+            ),
+          })),
+        }));
+      },
+
+      setMessageStreaming: (id, isStreaming) => {
+        set((state) => ({
+          conversations: state.conversations.map((c) => ({
+            ...c,
+            messages: c.messages.map((msg) =>
+              msg.id === id ? { ...msg, isStreaming } : msg
+            ),
+          })),
+        }));
+      },
+
+      setLoading: (loading) => set({ isLoading: loading }),
+
+      addAttachment: (attachment) => {
+        const id = crypto.randomUUID();
+        set((state) => ({
+          pendingAttachments: [...state.pendingAttachments, { ...attachment, id }],
+        }));
+      },
+
+      removeAttachment: (id) => {
+        set((state) => ({
+          pendingAttachments: state.pendingAttachments.filter((a) => a.id !== id),
+        }));
+      },
+
+      clearAttachments: () => set({ pendingAttachments: [] }),
+
+      getCurrentConversation: () => {
+        const state = get();
+        return state.conversations.find((c) => c.id === state.currentConversationId);
+      },
+
+      getMessages: () => {
+        const conversation = get().getCurrentConversation();
+        return conversation?.messages || [];
+      },
+    }),
+    {
+      name: 'roblox-chat-storage',
+      partialize: (state) => ({
+        conversations: state.conversations,
+        currentConversationId: state.currentConversationId,
+      }),
+    }
+  )
+);

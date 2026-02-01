@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useChatStore, Attachment, Message } from '@/stores/chatStore';
+import { useChatStore, Attachment } from '@/stores/chatStore';
 import { toast } from 'sonner';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
@@ -11,13 +11,15 @@ interface ChatMessage {
 
 export const useChat = () => {
   const {
-    messages,
     isLoading,
     addMessage,
     updateMessage,
     setMessageStreaming,
     setLoading,
+    getMessages,
   } = useChatStore();
+
+  const messages = useChatStore((state) => state.getMessages());
 
   const sendMessage = useCallback(
     async (content: string, attachments: Attachment[] = []) => {
@@ -32,8 +34,9 @@ export const useChat = () => {
 
       setLoading(true);
 
-      // Prepare messages for API
-      const apiMessages: ChatMessage[] = messages.map((msg) => ({
+      // Prepare messages for API - get fresh messages
+      const currentMessages = getMessages();
+      const apiMessages: ChatMessage[] = currentMessages.map((msg) => ({
         role: msg.role,
         content: msg.content,
       }));
@@ -44,12 +47,10 @@ export const useChat = () => {
       if (attachments.length > 0) {
         const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
         
-        // Add text if present
         if (content.trim()) {
           contentParts.push({ type: 'text', text: content });
         }
         
-        // Add images
         attachments.forEach((attachment) => {
           if (attachment.type === 'image' && attachment.base64 && attachment.mimeType) {
             contentParts.push({
@@ -59,7 +60,6 @@ export const useChat = () => {
               },
             });
           } else if (attachment.type === 'file' && attachment.base64) {
-            // For files, add as text context
             contentParts.push({
               type: 'text',
               text: `[Attached file: ${attachment.name}]`,
@@ -98,16 +98,16 @@ export const useChat = () => {
           const error = await response.json().catch(() => ({}));
           
           if (response.status === 429) {
-            throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
+            throw new Error('تم تجاوز الحد المسموح. يرجى الانتظار قليلاً.');
           }
           if (response.status === 402) {
-            throw new Error('AI credits exhausted. Please add more credits to continue.');
+            throw new Error('نفدت الرصيد. يرجى إضافة المزيد للمتابعة.');
           }
-          throw new Error(error.error || 'Failed to get response');
+          throw new Error(error.error || 'فشل في الحصول على الرد');
         }
 
         if (!response.body) {
-          throw new Error('No response body');
+          throw new Error('لا يوجد رد');
         }
 
         // Stream the response
@@ -122,7 +122,6 @@ export const useChat = () => {
 
           textBuffer += decoder.decode(value, { stream: true });
 
-          // Process line by line
           let newlineIndex: number;
           while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
             let line = textBuffer.slice(0, newlineIndex);
@@ -143,7 +142,6 @@ export const useChat = () => {
                 updateMessage(assistantId, fullContent);
               }
             } catch {
-              // Incomplete JSON, put back
               textBuffer = line + '\n' + textBuffer;
               break;
             }
@@ -175,15 +173,15 @@ export const useChat = () => {
         setMessageStreaming(assistantId, false);
       } catch (error) {
         console.error('Chat error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        updateMessage(assistantId, `Sorry, I encountered an error: ${errorMessage}`);
+        const errorMessage = error instanceof Error ? error.message : 'حدث خطأ غير معروف';
+        updateMessage(assistantId, `عذراً، حدث خطأ: ${errorMessage}`);
         setMessageStreaming(assistantId, false);
         toast.error(errorMessage);
       } finally {
         setLoading(false);
       }
     },
-    [messages, addMessage, updateMessage, setMessageStreaming, setLoading]
+    [addMessage, updateMessage, setMessageStreaming, setLoading, getMessages]
   );
 
   return {

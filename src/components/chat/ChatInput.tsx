@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, KeyboardEvent } from 'react';
-import { Send, Plus, Image, FileText, X } from 'lucide-react';
+import { Send, Plus, ImageIcon, FileText, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChatStore, Attachment } from '@/stores/chatStore';
 import { Button } from '@/components/ui/button';
@@ -53,7 +53,6 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   const processFile = async (file: File, type: 'image' | 'file') => {
     const url = URL.createObjectURL(file);
     
-    // Convert to base64 for sending to AI
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
@@ -61,7 +60,7 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
         type,
         name: file.name,
         url,
-        base64: base64.split(',')[1], // Remove data URL prefix
+        base64: base64.split(',')[1],
         mimeType: file.type,
       });
     };
@@ -85,7 +84,7 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   };
 
   return (
-    <div className="border-t border-border bg-background/80 backdrop-blur-xl p-4">
+    <div className="border-t border-border bg-card/50 backdrop-blur-xl p-4">
       {/* Attachments Preview */}
       {pendingAttachments.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
@@ -98,12 +97,12 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
                 <img
                   src={attachment.url}
                   alt={attachment.name}
-                  className="h-12 w-12 rounded object-cover"
+                  className="h-10 w-10 rounded object-cover"
                 />
               ) : (
-                <FileText className="h-5 w-5 text-muted-foreground" />
+                <FileText className="h-4 w-4 text-muted-foreground" />
               )}
-              <span className="text-sm text-foreground max-w-32 truncate">
+              <span className="text-sm text-foreground max-w-28 truncate">
                 {attachment.name}
               </span>
               <button
@@ -117,26 +116,26 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
         </div>
       )}
 
-      <div className="flex items-end gap-3">
+      <div className="flex items-end gap-2">
         {/* Attachment Button */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-all"
+              className="h-10 w-10 rounded-xl bg-muted hover:bg-accent text-muted-foreground hover:text-foreground transition-all flex-shrink-0"
             >
               <Plus className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-44">
             <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-              <Image className="h-4 w-4 mr-2" />
-              Upload Image
+              <ImageIcon className="h-4 w-4 mr-2" />
+              رفع صورة
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
               <FileText className="h-4 w-4 mr-2" />
-              Upload File
+              رفع ملف
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -169,13 +168,14 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
               handleResize();
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about Roblox Studio..."
+            placeholder="اسأل عن Roblox Studio..."
             disabled={disabled}
             rows={1}
+            dir="auto"
             className={cn(
               'w-full resize-none rounded-xl border border-border bg-muted/50 px-4 py-3',
               'text-foreground placeholder:text-muted-foreground',
-              'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary',
+              'focus:outline-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30',
               'transition-all duration-200',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
@@ -188,10 +188,9 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           disabled={disabled || (!value.trim() && pendingAttachments.length === 0)}
           size="icon"
           className={cn(
-            'h-10 w-10 rounded-xl transition-all duration-200',
-            'bg-primary hover:bg-primary/90',
-            'disabled:opacity-50 disabled:cursor-not-allowed',
-            value.trim() && 'shadow-glow'
+            'h-10 w-10 rounded-xl transition-all duration-200 flex-shrink-0',
+            'bg-foreground hover:bg-foreground/90 text-background',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
           )}
         >
           <Send className="h-4 w-4" />
@@ -199,7 +198,7 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
       </div>
 
       <p className="text-xs text-muted-foreground text-center mt-3">
-        Roblox Studio Expert · Powered by Gemini 3.0 Flash
+        Roblox Expert · Gemini 3.0 Flash
       </p>
     </div>
   );
