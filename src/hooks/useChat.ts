@@ -31,6 +31,7 @@ export const useChat = () => {
         role: 'user',
         content,
         attachments: attachments.length > 0 ? attachments : undefined,
+        status: 'sent',
       });
 
       setLoading(true);
@@ -84,6 +85,7 @@ export const useChat = () => {
         role: 'assistant',
         content: '',
         isStreaming: true,
+        status: 'sending',
       });
 
       try {
@@ -144,7 +146,7 @@ export const useChat = () => {
                   setAssistantTyping(false);
                 }
                 fullContent += content;
-                updateMessage(assistantId, fullContent);
+                updateMessage(assistantId, fullContent, 'delivered');
               }
             } catch {
               textBuffer = line + '\n' + textBuffer;
@@ -176,6 +178,7 @@ export const useChat = () => {
         }
 
         setMessageStreaming(assistantId, false);
+        updateMessage(assistantId, fullContent, 'read');
       } catch (error) {
         console.error('Chat error:', error);
         const errorMessage = error instanceof Error ? error.message : 'حدث خطأ غير معروف';

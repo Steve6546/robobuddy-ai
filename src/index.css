@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* Roblox Studio AI Chat - Pure Black Theme */
 
@@ -92,8 +92,8 @@
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
+  html, body {
+    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
     font-family: 'Inter', system-ui, sans-serif;
   }
 

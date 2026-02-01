@@ -10,6 +10,8 @@ export interface Attachment {
   mimeType?: string;
 }
 
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -17,6 +19,7 @@ export interface Message {
   timestamp: Date;
   attachments?: Attachment[];
   isStreaming?: boolean;
+  status?: MessageStatus;
 }
 
 const EMPTY_MESSAGES: Message[] = [];
@@ -48,7 +51,7 @@ interface ChatState {
   
   // Message actions
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>, conversationId?: string) => string;
-  updateMessage: (id: string, content: string) => void;
+  updateMessage: (id: string, content: string, status?: MessageStatus) => void;
   setMessageStreaming: (id: string, isStreaming: boolean) => void;
   setDraft: (id: string, draft: string) => void;
   
@@ -177,12 +180,14 @@ export const useChatStore = create<ChatState>()(
         return id;
       },
 
-      updateMessage: (id, content) => {
+      updateMessage: (id, content, status) => {
         set((state) => ({
           conversations: state.conversations.map((c) => ({
             ...c,
             messages: c.messages.map((msg) =>
-              msg.id === id ? { ...msg, content } : msg
+              msg.id === id
+                ? { ...msg, content, status: status || msg.status }
+                : msg
             ),
           })),
         }));
