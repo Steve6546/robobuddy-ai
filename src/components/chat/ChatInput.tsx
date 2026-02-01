@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, KeyboardEvent } from 'react';
+import { useState, useRef, useCallback, KeyboardEvent, useEffect } from 'react';
 import { Send, Plus, ImageIcon, FileText, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChatStore, Attachment } from '@/stores/chatStore';
@@ -21,8 +21,28 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  const currentConversationId = useChatStore((state) => state.currentConversationId);
   const pendingAttachments = useChatStore((state) => state.pendingAttachments);
-  const { addAttachment, removeAttachment, clearAttachments } = useChatStore.getState();
+  const {
+    addAttachment,
+    removeAttachment,
+    clearAttachments,
+    setDraft
+  } = useChatStore.getState();
+
+  // Load draft when conversation changes
+  useEffect(() => {
+    const conversation = useChatStore.getState().conversations.find(c => c.id === currentConversationId);
+    setValue(conversation?.draft || '');
+
+    // Reset textarea height after value is set
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+      }
+    }, 0);
+  }, [currentConversationId]);
 
   const handleResize = useCallback(() => {
     const textarea = textareaRef.current;
@@ -37,12 +57,15 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
 
     onSend(value.trim(), pendingAttachments);
     setValue('');
+    if (currentConversationId) {
+      setDraft(currentConversationId, '');
+    }
     clearAttachments();
 
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-  }, [value, pendingAttachments, disabled, onSend, clearAttachments]);
+  }, [value, pendingAttachments, disabled, onSend, clearAttachments, currentConversationId, setDraft]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -165,8 +188,12 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
             ref={textareaRef}
             value={value}
             onChange={(e) => {
-              setValue(e.target.value);
+              const newValue = e.target.value;
+              setValue(newValue);
               handleResize();
+              if (currentConversationId) {
+                setDraft(currentConversationId, newValue);
+              }
             }}
             onKeyDown={handleKeyDown}
             placeholder="اسأل عن Roblox Studio..."
