@@ -21,7 +21,8 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  const { pendingAttachments, addAttachment, removeAttachment, clearAttachments } = useChatStore();
+  const pendingAttachments = useChatStore((state) => state.pendingAttachments);
+  const { addAttachment, removeAttachment, clearAttachments } = useChatStore.getState();
 
   const handleResize = useCallback(() => {
     const textarea = textareaRef.current;
