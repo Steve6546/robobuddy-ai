@@ -183,6 +183,7 @@ function SidebarContent({
           variant="ghost"
           size="icon"
           onClick={onClose}
+          aria-label="إغلاق القائمة الجانبية"
           className="h-8 w-8 text-muted-foreground hover:text-foreground"
         >
           <X className="h-5 w-5" strokeWidth={2} />
@@ -208,6 +209,7 @@ function SidebarContent({
           )} strokeWidth={2} />
           <Input
             placeholder="بحث في المحادثات..."
+            aria-label="بحث في المحادثات"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pr-9"
@@ -275,7 +277,8 @@ function SidebarContent({
                     </div>
                     <button
                       onClick={(e) => handleDeleteConversation(e, conversation.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/20 rounded transition-all flex-shrink-0"
+                      aria-label="حذف المحادثة"
+                      className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-destructive p-1 hover:bg-destructive/20 rounded transition-all flex-shrink-0"
                     >
                       <Trash2 className="h-4 w-4 text-destructive" strokeWidth={2} />
                     </button>
