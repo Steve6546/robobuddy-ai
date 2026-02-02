@@ -4,26 +4,20 @@ import { cn } from '@/lib/utils';
 import { useChatStore, Attachment } from '@/stores/chatStore';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
 interface ChatInputProps {
   onSend: (content: string, attachments: Attachment[]) => void;
   disabled?: boolean;
 }
-export const ChatInput = ({
-  onSend,
-  disabled
-}: ChatInputProps) => {
+
+export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const currentConversationId = useChatStore(state => state.currentConversationId);
   const pendingAttachments = useChatStore(state => state.pendingAttachments);
-  const {
-    addAttachment,
-    removeAttachment,
-    clearAttachments,
-    setDraft
-  } = useChatStore.getState();
+  const { addAttachment, removeAttachment, clearAttachments, setDraft } = useChatStore.getState();
 
   // Load draft when conversation changes
   useEffect(() => {
@@ -34,19 +28,21 @@ export const ChatInput = ({
     setTimeout(() => {
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
-        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
       }
     }, 0);
   }, [currentConversationId]);
+
   const handleResize = useCallback(() => {
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
     }
   }, []);
+
   const handleSubmit = useCallback(() => {
-    if (!value.trim() && pendingAttachments.length === 0 || disabled) return;
+    if ((!value.trim() && pendingAttachments.length === 0) || disabled) return;
     onSend(value.trim(), pendingAttachments);
     setValue('');
     if (currentConversationId) {
@@ -57,12 +53,14 @@ export const ChatInput = ({
       textareaRef.current.style.height = 'auto';
     }
   }, [value, pendingAttachments, disabled, onSend, clearAttachments, currentConversationId, setDraft]);
+
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     }
   };
+
   const processFile = async (file: File, type: 'image' | 'file') => {
     const url = URL.createObjectURL(file);
     const reader = new FileReader();
@@ -78,6 +76,7 @@ export const ChatInput = ({
     };
     reader.readAsDataURL(file);
   };
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
@@ -85,6 +84,7 @@ export const ChatInput = ({
     }
     e.target.value = '';
   };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
@@ -92,64 +92,129 @@ export const ChatInput = ({
     }
     e.target.value = '';
   };
-  return <div className="border-t border-border bg-card/50 backdrop-blur-xl p-4">
+
+  return (
+    <div className="flex-shrink-0 border-t border-border bg-card/50 backdrop-blur-xl p-4 safe-area-inset-bottom">
       {/* Attachments Preview */}
-      {pendingAttachments.length > 0 && <div className="flex flex-wrap gap-2 mb-3">
-          {pendingAttachments.map(attachment => <div key={attachment.id} className="relative group flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border">
-              {attachment.type === 'image' ? <img src={attachment.url} alt={attachment.name} className="h-10 w-10 rounded object-cover" /> : <FileText className="h-4 w-4 text-muted-foreground" />}
+      {pendingAttachments.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {pendingAttachments.map(attachment => (
+            <div 
+              key={attachment.id} 
+              className="relative group flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border"
+            >
+              {attachment.type === 'image' ? (
+                <img 
+                  src={attachment.url} 
+                  alt={attachment.name} 
+                  className="h-10 w-10 rounded object-cover" 
+                />
+              ) : (
+                <FileText className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
+              )}
               <span className="text-sm text-foreground max-w-28 truncate">
                 {attachment.name}
               </span>
-              <button onClick={() => removeAttachment(attachment.id)} className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                <X className="h-3 w-3" />
+              <button 
+                onClick={() => removeAttachment(attachment.id)} 
+                className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="h-3 w-3" strokeWidth={2} />
               </button>
-            </div>)}
-        </div>}
+            </div>
+          ))}
+        </div>
+      )}
 
-      <div className="gap-2 flex-row flex items-center justify-end">
+      <div className="gap-2 flex-row flex items-end justify-end">
         {/* Attachment Button */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl bg-muted hover:bg-accent text-muted-foreground hover:text-foreground transition-all flex-shrink-0">
-              <Plus className="h-5 w-5" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-10 w-10 rounded-xl bg-muted hover:bg-accent text-muted-foreground hover:text-foreground transition-all flex-shrink-0"
+            >
+              <Plus className="h-5 w-5" strokeWidth={2} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-44">
             <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-              <ImageIcon className="h-4 w-4 mr-2" />
+              <ImageIcon className="h-4 w-4 mr-2" strokeWidth={2} />
               رفع صورة
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-              <FileText className="h-4 w-4 mr-2" />
+              <FileText className="h-4 w-4 mr-2" strokeWidth={2} />
               رفع ملف
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
         {/* Hidden File Inputs */}
-        <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
-        <input ref={fileInputRef} type="file" accept=".txt,.pdf,.doc,.docx,.lua,.json,.xml" multiple className="hidden" onChange={handleFileSelect} />
+        <input 
+          ref={imageInputRef} 
+          type="file" 
+          accept="image/*" 
+          multiple 
+          className="hidden" 
+          onChange={handleImageSelect} 
+        />
+        <input 
+          ref={fileInputRef} 
+          type="file" 
+          accept=".txt,.pdf,.doc,.docx,.lua,.json,.xml" 
+          multiple 
+          className="hidden" 
+          onChange={handleFileSelect} 
+        />
 
         {/* Text Input */}
         <div className="flex-1 relative">
-          <textarea ref={textareaRef} value={value} onChange={e => {
-          const newValue = e.target.value;
-          setValue(newValue);
-          handleResize();
-          if (currentConversationId) {
-            setDraft(currentConversationId, newValue);
-          }
-        }} onKeyDown={handleKeyDown} placeholder="اسأل عن Roblox Studio..." disabled={disabled} rows={1} dir="auto" className={cn('w-full resize-none rounded-xl border border-border bg-muted/50 px-4 py-3', 'text-foreground placeholder:text-muted-foreground', 'focus:outline-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30', 'transition-all duration-200', 'disabled:opacity-50 disabled:cursor-not-allowed')} />
+          <textarea 
+            ref={textareaRef} 
+            value={value} 
+            onChange={e => {
+              const newValue = e.target.value;
+              setValue(newValue);
+              handleResize();
+              if (currentConversationId) {
+                setDraft(currentConversationId, newValue);
+              }
+            }} 
+            onKeyDown={handleKeyDown} 
+            placeholder="اسأل عن Roblox Studio..." 
+            disabled={disabled} 
+            rows={1} 
+            dir="auto" 
+            className={cn(
+              'w-full resize-none rounded-xl border border-border bg-muted/50 px-4 py-3',
+              'text-foreground placeholder:text-muted-foreground',
+              'focus:outline-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30',
+              'transition-all duration-200',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              'max-h-40'
+            )} 
+          />
         </div>
 
         {/* Send Button */}
-        <Button onClick={handleSubmit} disabled={disabled || !value.trim() && pendingAttachments.length === 0} size="icon" className={cn('h-10 w-10 rounded-xl transition-all duration-200 flex-shrink-0', 'bg-foreground hover:bg-foreground/90 text-background', 'disabled:opacity-50 disabled:cursor-not-allowed')}>
-          <Send className="h-4 w-4" />
+        <Button 
+          onClick={handleSubmit} 
+          disabled={disabled || (!value.trim() && pendingAttachments.length === 0)} 
+          size="icon" 
+          className={cn(
+            'h-10 w-10 rounded-xl transition-all duration-200 flex-shrink-0',
+            'bg-foreground hover:bg-foreground/90 text-background',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+        >
+          <Send className="h-4 w-4" strokeWidth={2} />
         </Button>
       </div>
 
       <p className="text-xs text-muted-foreground text-center mt-3">
         Roblox Expert · Gemini 3.0 Flash
       </p>
-    </div>;
+    </div>
+  );
 };

@@ -44,7 +44,7 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
     setSearchQuery(q);
     if (q.trim()) {
       setIsSearching(true);
-      setTimeout(() => setIsSearching(false), 300); // Simulate backend delay
+      setTimeout(() => setIsSearching(false), 300);
     } else {
       setIsSearching(false);
     }
@@ -85,7 +85,6 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
         {/* Mobile Overlay Backdrop */}
         {isOpen && (
           <div
-            id="mobile-chat-overlay"
             className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
             onClick={onClose}
           />
@@ -93,10 +92,9 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
 
         {/* Mobile Sidebar */}
         <aside
-          id="chat-sidebar-mobile"
           className={cn(
             'fixed top-0 right-0 h-full w-80 bg-card border-l border-border z-50 lg:hidden',
-            'transform transition-transform duration-300 ease-in-out',
+            'transform transition-transform duration-300 ease-out',
             isOpen ? 'translate-x-0' : 'translate-x-full'
           )}
         >
@@ -122,27 +120,26 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
   // Desktop Sidebar
   return (
     <aside
-      id="chat-sidebar-desktop"
       className={cn(
-        'hidden lg:flex flex-col h-full bg-card border-r border-border transition-all duration-300 ease-in-out overflow-hidden',
+        'hidden lg:flex flex-col h-full bg-card border-r border-border transition-all duration-300 ease-out overflow-hidden',
         isOpen ? "w-80" : "w-0 border-r-0"
       )}
     >
       <div className="w-80 h-full flex flex-col flex-shrink-0">
         <SidebarContent
-        onClose={onClose}
-        searchQuery={searchQuery}
-        setSearchQuery={handleSearchChange}
-        isSearching={isSearching}
-        visibleConversations={visibleConversations}
-        currentConversationId={currentConversationId}
-        handleNewChat={handleNewChat}
-        handleSelectConversation={handleSelectConversation}
-        handleDeleteConversation={handleDeleteConversation}
-        hasMore={hasMore}
-        loadMoreConversations={loadMoreConversations}
-        formatDate={formatDate}
-      />
+          onClose={onClose}
+          searchQuery={searchQuery}
+          setSearchQuery={handleSearchChange}
+          isSearching={isSearching}
+          visibleConversations={visibleConversations}
+          currentConversationId={currentConversationId}
+          handleNewChat={handleNewChat}
+          handleSelectConversation={handleSelectConversation}
+          handleDeleteConversation={handleDeleteConversation}
+          hasMore={hasMore}
+          loadMoreConversations={loadMoreConversations}
+          formatDate={formatDate}
+        />
       </div>
     </aside>
   );
@@ -163,7 +160,7 @@ interface SidebarContentProps {
   formatDate: (date: Date) => string;
 }
 
-const SidebarContent = ({
+function SidebarContent({
   onClose,
   searchQuery,
   setSearchQuery,
@@ -176,137 +173,137 @@ const SidebarContent = ({
   hasMore,
   loadMoreConversations,
   formatDate
-}: SidebarContentProps) => {
+}: SidebarContentProps) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border">
-            <h2 className="text-lg font-semibold text-foreground">المحادثات</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+      {/* Header */}
+      <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-border">
+        <h2 className="text-lg font-semibold text-foreground">المحادثات</h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-5 w-5" strokeWidth={2} />
+        </Button>
+      </div>
 
-          {/* Action Area */}
-          <div className="p-4 space-y-4">
-            {/* New Chat Button */}
-            <Button
-              onClick={handleNewChat}
-              className="w-full gap-2 bg-foreground text-background hover:bg-foreground/90"
-            >
-              <Plus className="h-4 w-4" />
-              محادثة جديدة
-            </Button>
+      {/* Action Area */}
+      <div className="flex-shrink-0 p-4 space-y-4">
+        {/* New Chat Button */}
+        <Button
+          onClick={handleNewChat}
+          className="w-full gap-2 bg-foreground text-background hover:bg-foreground/90"
+        >
+          <Plus className="h-4 w-4" strokeWidth={2} />
+          محادثة جديدة
+        </Button>
 
-            {/* Search Input */}
-            <div className="relative">
-              <Search className={cn(
-                "absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-all",
-                isSearching && "animate-pulse scale-110 text-foreground"
-              )} />
-              <Input
-                placeholder="بحث في المحادثات..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-9"
-              />
-              {isSearching && (
-                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                  <div className="w-3 h-3 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
-                </div>
-              )}
+        {/* Search Input */}
+        <div className="relative">
+          <Search className={cn(
+            "absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-all",
+            isSearching && "animate-pulse scale-110 text-foreground"
+          )} strokeWidth={2} />
+          <Input
+            placeholder="بحث في المحادثات..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pr-9"
+          />
+          {isSearching && (
+            <div className="absolute left-3 top-1/2 -translate-y-1/2">
+              <div className="thinking-spinner !w-3 !h-3 !border-[1.5px]" />
             </div>
-          </div>
+          )}
+        </div>
+      </div>
 
-          {/* Conversations List */}
-          <ScrollArea className="flex-1 px-2">
-            <div className="space-y-1 pb-4">
-              {visibleConversations.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  {searchQuery ? 'لا توجد نتائج للبحث' : 'لا توجد محادثات سابقة'}
-                </div>
-              ) : (
-                <>
-                  {visibleConversations.map((conversation) => {
-                    const lastMessage = conversation.messages[conversation.messages.length - 1];
+      {/* Conversations List - Internal scroll */}
+      <ScrollArea className="flex-1 px-2">
+        <div className="space-y-1 pb-4">
+          {visibleConversations.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              {searchQuery ? 'لا توجد نتائج للبحث' : 'لا توجد محادثات سابقة'}
+            </div>
+          ) : (
+            <>
+              {visibleConversations.map((conversation) => {
+                const lastMessage = conversation.messages[conversation.messages.length - 1];
 
-                    return (
-                      <button
-                        key={conversation.id}
-                        onClick={() => handleSelectConversation(conversation.id)}
-                        className={cn(
-                          'w-full flex items-start gap-3 p-3 rounded-lg text-right',
-                          'transition-colors duration-200 group',
-                          conversation.id === currentConversationId
-                            ? 'bg-accent text-accent-foreground'
-                            : 'hover:bg-muted text-foreground'
+                return (
+                  <button
+                    key={conversation.id}
+                    onClick={() => handleSelectConversation(conversation.id)}
+                    className={cn(
+                      'w-full flex items-start gap-3 p-3 rounded-lg text-right',
+                      'transition-colors duration-200 group',
+                      conversation.id === currentConversationId
+                        ? 'bg-accent text-accent-foreground'
+                        : 'hover:bg-muted text-foreground'
+                    )}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <MessageSquare className="h-5 w-5 mt-0.5 text-muted-foreground" strokeWidth={2} />
+                      {conversation.unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium truncate">
+                          {conversation.title}
+                        </p>
+                        {conversation.unreadCount > 0 && (
+                          <Badge variant="default" className="h-4 px-1 min-w-[1rem] text-[10px]">
+                            {conversation.unreadCount}
+                          </Badge>
                         )}
-                      >
-                        <div className="relative">
-                          <MessageSquare className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                          {conversation.unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-medium truncate">
-                              {conversation.title}
-                            </p>
-                            {conversation.unreadCount > 0 && (
-                              <Badge variant="default" className="h-4 px-1 min-w-[1rem] text-[10px]">
-                                {conversation.unreadCount}
-                              </Badge>
-                            )}
-                          </div>
-                          {lastMessage && (
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">
-                              {lastMessage.content}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatDate(conversation.updatedAt)}
-                          </p>
-                        </div>
-                        <button
-                          onClick={(e) => handleDeleteConversation(e, conversation.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/20 rounded transition-all"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </button>
-                      </button>
-                    );
-                  })}
-
-                  {hasMore && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={loadMoreConversations}
-                      className="w-full mt-2 text-muted-foreground hover:text-foreground"
+                      </div>
+                      {lastMessage && (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {lastMessage.content}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatDate(conversation.updatedAt)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteConversation(e, conversation.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/20 rounded transition-all flex-shrink-0"
                     >
-                      تحميل المزيد
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
-          </ScrollArea>
+                      <Trash2 className="h-4 w-4 text-destructive" strokeWidth={2} />
+                    </button>
+                  </button>
+                );
+              })}
 
-          {/* Footer */}
-          <div className="p-4 border-t border-border">
-            <p className="text-xs text-muted-foreground text-center">
-              المحادثات محفوظة محلياً
-            </p>
-          </div>
+              {hasMore && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={loadMoreConversations}
+                  className="w-full mt-2 text-muted-foreground hover:text-foreground"
+                >
+                  تحميل المزيد
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* Footer */}
+      <div className="flex-shrink-0 p-4 border-t border-border">
+        <p className="text-xs text-muted-foreground text-center">
+          المحادثات محفوظة محلياً
+        </p>
+      </div>
     </div>
   );
-};
+}
