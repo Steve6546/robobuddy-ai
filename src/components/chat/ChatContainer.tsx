@@ -6,22 +6,35 @@ import { WelcomeScreen } from './WelcomeScreen';
 import { ConversationSidebar } from './ConversationSidebar';
 import { useChat } from '@/hooks/useChat';
 import { useChatStore } from '@/stores/chatStore';
-import { cn } from '@/lib/utils';
 
 export const ChatContainer = () => {
   const { messages, isLoading, sendMessage } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isAssistantTyping = useChatStore((state) => state.isAssistantTyping);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const pendingAttachments = useChatStore((state) => state.pendingAttachments);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   };
 
+  // Auto-scroll when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Auto-scroll during streaming
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.isStreaming) {
+      scrollToBottom();
+    }
+  }, [messages[messages.length - 1]?.content]);
 
   const handleSend = (content: string, attachments: typeof pendingAttachments) => {
     sendMessage(content, attachments);
@@ -32,10 +45,7 @@ export const ChatContainer = () => {
   };
 
   return (
-    <div
-      id="page-root"
-      className="flex h-screen bg-background overflow-hidden"
-    >
+    <div className="fixed inset-0 flex bg-background overflow-hidden">
       {/* Desktop Sidebar */}
       <ConversationSidebar
         isOpen={sidebarOpen}
@@ -43,10 +53,16 @@ export const ChatContainer = () => {
         isMobile={false}
       />
 
-      <main id="main-content" className="flex-1 flex flex-col min-w-0">
+      {/* Main content area - fixed layout */}
+      <main className="flex-1 flex flex-col min-w-0 h-full">
+        {/* Fixed Header */}
         <ChatHeader onOpenSidebar={() => setSidebarOpen(!sidebarOpen)} />
 
-        <div className="flex-1 overflow-y-auto">
+        {/* Scrollable message area - ONLY scrollable element */}
+        <div 
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth"
+        >
           {messages.length === 0 ? (
             <WelcomeScreen onPromptClick={handleQuickPrompt} />
           ) : (
@@ -54,18 +70,12 @@ export const ChatContainer = () => {
               {messages.map((message) => (
                 <ChatMessage key={message.id} message={message} />
               ))}
-              {isAssistantTyping && (
-                <div className="p-4 flex items-center gap-2 text-muted-foreground animate-pulse">
-                  <div className="w-2 h-2 bg-foreground rounded-full animate-bounce [animation-delay:-0.3s]" />
-                  <div className="w-2 h-2 bg-foreground rounded-full animate-bounce [animation-delay:-0.15s]" />
-                  <div className="w-2 h-2 bg-foreground rounded-full animate-bounce" />
-                </div>
-              )}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-1" />
             </div>
           )}
         </div>
 
+        {/* Fixed Input Area */}
         <ChatInput onSend={handleSend} disabled={isLoading} />
       </main>
 
