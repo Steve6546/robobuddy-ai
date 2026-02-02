@@ -8,6 +8,7 @@ interface ThinkingIndicatorProps {
 export const ThinkingIndicator = ({ className, isVisible }: ThinkingIndicatorProps) => {
   return (
     <div 
+      role="status"
       className={cn(
         'flex items-center gap-3 transition-all duration-300 ease-out',
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none',

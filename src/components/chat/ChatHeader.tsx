@@ -33,6 +33,7 @@ export const ChatHeader = ({ onOpenSidebar }: ChatHeaderProps) => {
         variant="ghost"
         size="icon"
         onClick={onOpenSidebar}
+        aria-label="فتح القائمة الجانبية"
         className="h-10 w-10 text-muted-foreground hover:text-foreground transition-colors"
       >
         <Menu className="h-5 w-5" strokeWidth={2} />

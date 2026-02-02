@@ -117,7 +117,8 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
               </span>
               <button 
                 onClick={() => removeAttachment(attachment.id)} 
-                className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="إزالة المرفق"
+                className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring transition-opacity"
               >
                 <X className="h-3 w-3" strokeWidth={2} />
               </button>
@@ -133,6 +134,7 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
             <Button 
               variant="ghost" 
               size="icon" 
+              aria-label="إضافة مرفقات"
               className="h-10 w-10 rounded-xl bg-muted hover:bg-accent text-muted-foreground hover:text-foreground transition-all flex-shrink-0"
             >
               <Plus className="h-5 w-5" strokeWidth={2} />
@@ -183,6 +185,7 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
             }} 
             onKeyDown={handleKeyDown} 
             placeholder="اسأل عن Roblox Studio..." 
+            aria-label="اكتب رسالتك هنا"
             disabled={disabled} 
             rows={1} 
             dir="auto" 
@@ -202,6 +205,7 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           onClick={handleSubmit} 
           disabled={disabled || (!value.trim() && pendingAttachments.length === 0)} 
           size="icon" 
+          aria-label="إرسال الرسالة"
           className={cn(
             'h-10 w-10 rounded-xl transition-all duration-200 flex-shrink-0',
             'bg-foreground hover:bg-foreground/90 text-background',
