@@ -10,10 +10,12 @@ import { useState, useMemo } from 'react';
 interface ConversationSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  isMobile?: boolean;
 }
 
-export const ConversationSidebar = ({ isOpen, onClose }: ConversationSidebarProps) => {
+export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: ConversationSidebarProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const conversations = useChatStore((state) => state.conversations);
   const currentConversationId = useChatStore((state) => state.currentConversationId);
   const visibleConversationsCount = useChatStore((state) => state.visibleConversationsCount);
@@ -38,17 +40,27 @@ export const ConversationSidebar = ({ isOpen, onClose }: ConversationSidebarProp
     });
   }, [conversations, searchQuery]);
 
+  const handleSearchChange = (q: string) => {
+    setSearchQuery(q);
+    if (q.trim()) {
+      setIsSearching(true);
+      setTimeout(() => setIsSearching(false), 300); // Simulate backend delay
+    } else {
+      setIsSearching(false);
+    }
+  };
+
   const visibleConversations = filteredConversations.slice(0, visibleConversationsCount);
   const hasMore = filteredConversations.length > visibleConversationsCount;
 
   const handleNewChat = () => {
     createConversation();
-    onClose();
+    if (isMobile) onClose();
   };
 
   const handleSelectConversation = (id: string) => {
     setCurrentConversation(id);
-    onClose();
+    if (isMobile) onClose();
   };
 
   const handleDeleteConversation = (e: React.MouseEvent, id: string) => {
@@ -67,25 +79,106 @@ export const ConversationSidebar = ({ isOpen, onClose }: ConversationSidebarProp
     return d.toLocaleDateString('ar-SA');
   };
 
-  return (
-    <>
-      {/* Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          'fixed top-0 right-0 h-full w-80 bg-card border-l border-border z-50',
-          'transform transition-transform duration-300 ease-in-out',
-          isOpen ? 'translate-x-0' : 'translate-x-full'
+  if (isMobile) {
+    return (
+      <>
+        {/* Mobile Overlay Backdrop */}
+        {isOpen && (
+          <div
+            id="mobile-chat-overlay"
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+            onClick={onClose}
+          />
         )}
-      >
-        <div className="flex flex-col h-full">
+
+        {/* Mobile Sidebar */}
+        <aside
+          id="chat-sidebar-mobile"
+          className={cn(
+            'fixed top-0 right-0 h-full w-80 bg-card border-l border-border z-50 lg:hidden',
+            'transform transition-transform duration-300 ease-in-out',
+            isOpen ? 'translate-x-0' : 'translate-x-full'
+          )}
+        >
+          <SidebarContent
+            onClose={onClose}
+            searchQuery={searchQuery}
+            setSearchQuery={handleSearchChange}
+            isSearching={isSearching}
+            visibleConversations={visibleConversations}
+            currentConversationId={currentConversationId}
+            handleNewChat={handleNewChat}
+            handleSelectConversation={handleSelectConversation}
+            handleDeleteConversation={handleDeleteConversation}
+            hasMore={hasMore}
+            loadMoreConversations={loadMoreConversations}
+            formatDate={formatDate}
+          />
+        </aside>
+      </>
+    );
+  }
+
+  // Desktop Sidebar
+  return (
+    <aside
+      id="chat-sidebar-desktop"
+      className={cn(
+        'hidden lg:flex flex-col h-full bg-card border-r border-border transition-all duration-300 ease-in-out overflow-hidden',
+        isOpen ? "w-80" : "w-0 border-r-0"
+      )}
+    >
+      <div className="w-80 h-full flex flex-col flex-shrink-0">
+        <SidebarContent
+        onClose={onClose}
+        searchQuery={searchQuery}
+        setSearchQuery={handleSearchChange}
+        isSearching={isSearching}
+        visibleConversations={visibleConversations}
+        currentConversationId={currentConversationId}
+        handleNewChat={handleNewChat}
+        handleSelectConversation={handleSelectConversation}
+        handleDeleteConversation={handleDeleteConversation}
+        hasMore={hasMore}
+        loadMoreConversations={loadMoreConversations}
+        formatDate={formatDate}
+      />
+      </div>
+    </aside>
+  );
+};
+
+interface SidebarContentProps {
+  onClose: () => void;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  isSearching?: boolean;
+  visibleConversations: Conversation[];
+  currentConversationId: string | null;
+  handleNewChat: () => void;
+  handleSelectConversation: (id: string) => void;
+  handleDeleteConversation: (e: React.MouseEvent, id: string) => void;
+  hasMore: boolean;
+  loadMoreConversations: () => void;
+  formatDate: (date: Date) => string;
+}
+
+const SidebarContent = ({
+  onClose,
+  searchQuery,
+  setSearchQuery,
+  isSearching,
+  visibleConversations,
+  currentConversationId,
+  handleNewChat,
+  handleSelectConversation,
+  handleDeleteConversation,
+  hasMore,
+  loadMoreConversations,
+  formatDate
+}: SidebarContentProps) => {
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
             <h2 className="text-lg font-semibold text-foreground">المحادثات</h2>
@@ -112,13 +205,21 @@ export const ConversationSidebar = ({ isOpen, onClose }: ConversationSidebarProp
 
             {/* Search Input */}
             <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className={cn(
+                "absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-all",
+                isSearching && "animate-pulse scale-110 text-foreground"
+              )} />
               <Input
                 placeholder="بحث في المحادثات..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pr-9"
               />
+              {isSearching && (
+                <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                  <div className="w-3 h-3 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -206,8 +307,6 @@ export const ConversationSidebar = ({ isOpen, onClose }: ConversationSidebarProp
               المحادثات محفوظة محلياً
             </p>
           </div>
-        </div>
-      </aside>
-    </>
+    </div>
   );
 };

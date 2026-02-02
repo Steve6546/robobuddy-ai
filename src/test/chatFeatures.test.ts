@@ -108,4 +108,17 @@ describe('Chat Features', () => {
     setCurrentConversation(id1);
     expect(useChatStore.getState().conversations.find(c => c.id === id1)?.unreadCount).toBe(0);
   });
+
+  it('should update message status', () => {
+    const { createConversation, addMessage, updateMessage } = useChatStore.getState();
+
+    createConversation();
+    const msgId = addMessage({ role: 'user', content: 'Test', status: 'sending' });
+
+    expect(useChatStore.getState().getMessages()[0].status).toBe('sending');
+
+    updateMessage(msgId, 'Test Updated', 'sent');
+    expect(useChatStore.getState().getMessages()[0].status).toBe('sent');
+    expect(useChatStore.getState().getMessages()[0].content).toBe('Test Updated');
+  });
 });
