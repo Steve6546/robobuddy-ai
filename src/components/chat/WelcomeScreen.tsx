@@ -46,12 +46,12 @@ interface WelcomeScreenProps {
 
 export const WelcomeScreen = ({ onPromptClick }: WelcomeScreenProps) => {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-auto">
+    <div className="flex-1 flex flex-col items-center justify-center p-6 min-h-full">
       <div className="max-w-2xl w-full space-y-8">
         {/* Logo and Title */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-foreground shadow-glow-lg animate-float">
-            <Code className="h-8 w-8 text-background" />
+            <Code className="h-8 w-8 text-background" strokeWidth={2} />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
             Roblox Studio Expert
@@ -61,14 +61,14 @@ export const WelcomeScreen = ({ onPromptClick }: WelcomeScreenProps) => {
           </p>
         </div>
 
-        {/* Skills Grid */}
+        {/* Skills Grid - consistent icon sizing (h-5 w-5) */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {skills.map((skill) => (
             <div
               key={skill.title}
               className="p-4 rounded-xl bg-card border border-border hover:border-foreground/20 transition-all duration-300 group"
             >
-              <skill.icon className="h-5 w-5 text-foreground mb-3 group-hover:scale-110 transition-transform" />
+              <skill.icon className="h-5 w-5 text-foreground mb-3 group-hover:scale-110 transition-transform" strokeWidth={2} />
               <h3 className="font-medium text-foreground text-sm mb-1">
                 {skill.title}
               </h3>

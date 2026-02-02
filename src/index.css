@@ -92,9 +92,25 @@
     @apply border-border;
   }
 
-  html, body {
-    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
+  html {
+    @apply overflow-hidden;
+    height: 100%;
+    height: -webkit-fill-available;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased overflow-hidden;
     font-family: 'Inter', system-ui, sans-serif;
+    height: 100%;
+    height: -webkit-fill-available;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+
+  #root {
+    height: 100%;
+    height: -webkit-fill-available;
+    overflow: hidden;
   }
 
   /* Custom scrollbar */
@@ -104,7 +120,7 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--background));
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
@@ -113,49 +129,53 @@
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 }
 
 @layer components {
-  /* Typing animation - circular spinner */
-  @keyframes spin {
+  /* ============================================
+     THINKING INDICATOR - Circular Spinner
+     ============================================ */
+  @keyframes spin-smooth {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
 
-  .loading-spinner {
+  .thinking-spinner {
     width: 20px;
     height: 20px;
-    border: 2px solid hsl(var(--border));
-    border-top: 2px solid hsl(var(--foreground));
+    border: 2px solid hsl(var(--muted));
+    border-top-color: hsl(var(--foreground));
     border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+    animation: spin-smooth 0.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
   }
 
-  /* Typing dots animation */
-  @keyframes typing-dot {
-    0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
-    30% { opacity: 1; transform: translateY(-4px); }
+  /* ============================================
+     STREAMING TEXT CURSOR
+     ============================================ */
+  @keyframes cursor-blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
   }
 
-  .typing-indicator span {
-    animation: typing-dot 1.4s infinite ease-in-out;
+  .streaming-cursor {
+    animation: cursor-blink 0.8s ease-in-out infinite;
+    vertical-align: text-bottom;
   }
 
-  .typing-indicator span:nth-child(2) {
-    animation-delay: 0.2s;
+  /* Smooth text appearance */
+  .streaming-text {
+    will-change: contents;
   }
 
-  .typing-indicator span:nth-child(3) {
-    animation-delay: 0.4s;
-  }
-
-  /* Message fade in */
+  /* ============================================
+     MESSAGE ANIMATIONS
+     ============================================ */
   @keyframes message-fade-in {
     from {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(8px);
     }
     to {
       opacity: 1;
@@ -164,15 +184,39 @@
   }
 
   .message-enter {
-    animation: message-fade-in 0.3s ease-out forwards;
+    animation: message-fade-in 0.25s ease-out forwards;
   }
 
-  /* Glow effect */
+  /* ============================================
+     SUBTLE PULSE ANIMATION
+     ============================================ */
+  @keyframes pulse-subtle {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 1.5s ease-in-out infinite;
+  }
+
+  /* ============================================
+     GLOW EFFECTS
+     ============================================ */
   .glow-effect {
     box-shadow: var(--shadow-glow);
   }
 
-  /* Gradient text */
+  .shadow-glow {
+    box-shadow: 0 0 15px hsl(var(--foreground) / 0.15);
+  }
+
+  .shadow-glow-lg {
+    box-shadow: 0 0 30px hsl(var(--foreground) / 0.2);
+  }
+
+  /* ============================================
+     GRADIENT TEXT
+     ============================================ */
   .gradient-text {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
@@ -180,7 +224,9 @@
     background-clip: text;
   }
 
-  /* Code block styling */
+  /* ============================================
+     CODE BLOCK STYLING
+     ============================================ */
   .code-block {
     font-family: 'JetBrains Mono', monospace;
     background: hsl(var(--deep-black));
@@ -188,27 +234,9 @@
     border-radius: var(--radius);
   }
 
-  /* Pulse animation */
-  @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 5px hsl(var(--foreground) / 0.1); }
-    50% { box-shadow: 0 0 20px hsl(var(--foreground) / 0.2); }
-  }
-
-  .pulse-glow {
-    animation: pulse-glow 2s infinite ease-in-out;
-  }
-
-  /* Smooth streaming text */
-  @keyframes stream-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  .stream-char {
-    animation: stream-in 0.1s ease-out forwards;
-  }
-
-  /* Float animation */
+  /* ============================================
+     FLOAT ANIMATION
+     ============================================ */
   @keyframes float {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-6px); }
@@ -218,18 +246,27 @@
     animation: float 3s ease-in-out infinite;
   }
 
-  /* Shadow glow */
-  .shadow-glow {
-    box-shadow: 0 0 15px hsl(var(--foreground) / 0.15);
-  }
-
-  .shadow-glow-lg {
-    box-shadow: 0 0 30px hsl(var(--foreground) / 0.2);
+  /* ============================================
+     SMOOTH TRANSITIONS FOR UI ELEMENTS
+     ============================================ */
+  .transition-smooth {
+    transition-property: opacity, transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
   }
 }
 
 @layer utilities {
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Safe area padding for mobile */
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top, 0);
   }
 }
