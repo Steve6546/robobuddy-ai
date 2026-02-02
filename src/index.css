@@ -96,6 +96,7 @@
     @apply overflow-hidden;
     height: 100%;
     height: -webkit-fill-available;
+    overscroll-behavior: none;
   }
 
   body {
@@ -103,8 +104,9 @@
     font-family: 'Inter', system-ui, sans-serif;
     height: 100%;
     height: -webkit-fill-available;
-    min-height: 100vh;
+    min-height: 100dvh;
     min-height: -webkit-fill-available;
+    overscroll-behavior: none;
   }
 
   #root {
@@ -259,14 +261,5 @@
 @layer utilities {
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
-  }
-
-  /* Safe area padding for mobile */
-  .safe-area-inset-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0);
-  }
-
-  .safe-area-inset-top {
-    padding-top: env(safe-area-inset-top, 0);
   }
 }
