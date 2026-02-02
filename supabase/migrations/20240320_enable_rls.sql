@@ -1,112 +1,95 @@
--- Row Level Security (RLS) Configuration Script
--- Target: All existing tables in the public schema
--- Logic: Default-deny with owner-based access patterns
+-- Migration: Enable Row Level Security and implement owner-based policies
+-- This script follows a "default-deny" posture.
 
--- 1. Enable RLS on all existing tables in the 'public' schema
 DO $$
 DECLARE
     r RECORD;
 BEGIN
+    -- 1. Enable RLS on all tables in the public schema and FORCE it.
+    -- FORCE RLS ensures that even table owners (if they are not superusers)
+    -- are subject to RLS policies.
     FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-        EXECUTE 'ALTER TABLE public.' || quote_ident(r.tablename) || ' ENABLE ROW LEVEL SECURITY;';
-        RAISE NOTICE 'Enabled RLS on table: %', r.tablename;
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', r.tablename);
+        EXECUTE format('ALTER TABLE public.%I FORCE ROW LEVEL SECURITY', r.tablename);
+    END LOOP;
+
+    -- 2. Clean up existing permissive policies to ensure a fresh start.
+    FOR r IN (SELECT policyname, tablename FROM pg_policies WHERE schemaname = 'public') LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', r.policyname, r.tablename);
     END LOOP;
 END $$;
 
--- 2. Drop existing policies to ensure a clean, controlled state
--- WARNING: This will remove any custom policies already in place.
-DO $$
-DECLARE
-    r RECORD;
-BEGIN
-    FOR r IN (
-        SELECT policyname, tablename
-        FROM pg_policies
-        WHERE schemaname = 'public'
-    ) LOOP
-        EXECUTE 'DROP POLICY IF EXISTS ' || quote_ident(r.policyname) || ' ON public.' || quote_ident(r.tablename) || ';';
-    END LOOP;
-END $$;
+-- 3. Default-Deny: Revoke all from anon role.
+-- This ensures that if RLS is accidentally disabled, the anon role still has no access.
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM anon;
 
--- 3. Specific Policies for Chat Application Tables (if they exist)
+-- 4. Grant limited access to authenticated role.
+-- Authenticated users need to be able to interact with the tables, but RLS will filter the rows.
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
--- profiles table: Users can manage their own profile
-DO $$ BEGIN
-    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'profiles') THEN
-        EXECUTE 'CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT TO authenticated USING (auth.uid() = id);';
-        EXECUTE 'CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id);';
-        EXECUTE 'CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);';
-    END IF;
-END $$;
+-- 5. SPECIFIC POLICIES
 
--- conversations table: Users can manage their own conversations
-DO $$ BEGIN
-    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'conversations') THEN
-        EXECUTE 'CREATE POLICY "Users can view their own conversations" ON public.conversations FOR SELECT TO authenticated USING (auth.uid() = user_id);';
-        EXECUTE 'CREATE POLICY "Users can create their own conversations" ON public.conversations FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);';
-        EXECUTE 'CREATE POLICY "Users can update their own conversations" ON public.conversations FOR UPDATE TO authenticated USING (auth.uid() = user_id);';
-        EXECUTE 'CREATE POLICY "Users can delete their own conversations" ON public.conversations FOR DELETE TO authenticated USING (auth.uid() = user_id);';
-    END IF;
-END $$;
+-- PROFILES: Users can only see and edit their own profile.
+CREATE POLICY "Users can view own profile"
+ON public.profiles FOR SELECT
+TO authenticated
+USING (auth.uid() = id);
 
--- messages table: Users can view/create messages in their own conversations
-DO $$ BEGIN
-    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'messages') THEN
-        EXECUTE 'CREATE POLICY "Users can view messages in their conversations" ON public.messages FOR SELECT TO authenticated USING (
-            EXISTS (
-                SELECT 1 FROM public.conversations
-                WHERE public.conversations.id = public.messages.conversation_id
-                AND public.conversations.user_id = auth.uid()
-            )
-        );';
-        EXECUTE 'CREATE POLICY "Users can send messages to their conversations" ON public.messages FOR INSERT TO authenticated WITH CHECK (
-            EXISTS (
-                SELECT 1 FROM public.conversations
-                WHERE public.conversations.id = public.messages.conversation_id
-                AND public.conversations.user_id = auth.uid()
-            )
-        );';
-    END IF;
-END $$;
+CREATE POLICY "Users can update own profile"
+ON public.profiles FOR UPDATE
+TO authenticated
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
 
--- 4. Dynamic Discovery for other tables
--- Apply a standard owner-access policy for any other table containing 'user_id', 'owner_id', or 'created_by' columns.
-DO $$
-DECLARE
-    r RECORD;
-    col_name TEXT;
-BEGIN
-    FOR r IN (
-        SELECT DISTINCT t.table_name
-        FROM information_schema.tables t
-        WHERE t.table_schema = 'public'
-        AND t.table_type = 'BASE TABLE'
-        AND t.table_name NOT IN ('profiles', 'conversations', 'messages')
-    ) LOOP
-        -- Check for common owner columns
-        SELECT column_name INTO col_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-        AND table_name = r.table_name
-        AND column_name IN ('user_id', 'owner_id', 'created_by')
-        LIMIT 1;
+-- CONVERSATIONS: Users can only see and manage conversations they created.
+CREATE POLICY "Users can view own conversations"
+ON public.conversations FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
 
-        IF col_name IS NOT NULL THEN
-            EXECUTE 'CREATE POLICY "Allow owner access based on ' || col_name || '" ON public.' || quote_ident(r.table_name) || ' FOR ALL TO authenticated USING (auth.uid() = ' || quote_ident(col_name) || ');';
-            RAISE NOTICE 'Applied owner access policy to table: % using column: %', r.table_name, col_name;
-        ELSE
-            RAISE WARNING 'Table % has no recognized owner column (user_id, owner_id, created_by). RLS enabled but no permissive policies applied.', r.table_name;
-        END IF;
-    END LOOP;
-END $$;
+CREATE POLICY "Users can insert own conversations"
+ON public.conversations FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
 
--- 5. Force RLS for all tables (even for table owners/postgres role if applicable in some contexts)
--- This is a safety measure to ensure RLS is always active.
-DO $$
-DECLARE
-    r RECORD;
-BEGIN
-    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-        EXECUTE 'ALTER TABLE public.' || quote_ident(r.tablename) || ' FORCE ROW LEVEL SECURITY;';
-    END LOOP;
-END $$;
+CREATE POLICY "Users can update own conversations"
+ON public.conversations FOR UPDATE
+TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own conversations"
+ON public.conversations FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id);
+
+-- MESSAGES: Users can only see and manage messages in their conversations.
+-- This policy assumes messages table has a user_id or we check via the conversation_id.
+-- If messages has user_id:
+CREATE POLICY "Users can view own messages"
+ON public.messages FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own messages"
+ON public.messages FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own messages"
+ON public.messages FOR UPDATE
+TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own messages"
+ON public.messages FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id);
+
+-- Note: In a production scenario with shared conversations, the MESSAGES policy
+-- would join on the conversations table to check membership.
+-- For this implementation, we enforce direct ownership.

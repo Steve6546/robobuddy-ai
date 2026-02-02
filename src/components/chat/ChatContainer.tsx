@@ -13,7 +13,7 @@ export const ChatContainer = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAssistantTyping = useChatStore((state) => state.isAssistantTyping);
   const pendingAttachments = useChatStore((state) => state.pendingAttachments);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -34,10 +34,7 @@ export const ChatContainer = () => {
   return (
     <div
       id="page-root"
-      className={cn(
-        "flex h-screen bg-background transition-transform duration-300 ease-in-out lg:w-[calc(100%+20rem)]",
-        sidebarOpen ? "lg:translate-x-0" : "lg:-translate-x-80"
-      )}
+      className="flex h-screen bg-background overflow-hidden"
     >
       {/* Desktop Sidebar */}
       <ConversationSidebar
@@ -46,7 +43,7 @@ export const ChatContainer = () => {
         isMobile={false}
       />
 
-      <main id="main-content" className="flex-1 flex flex-col min-w-0 lg:w-screen">
+      <main id="main-content" className="flex-1 flex flex-col min-w-0">
         <ChatHeader onOpenSidebar={() => setSidebarOpen(!sidebarOpen)} />
 
         <div className="flex-1 overflow-y-auto">

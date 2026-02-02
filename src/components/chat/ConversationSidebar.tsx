@@ -55,12 +55,12 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
 
   const handleNewChat = () => {
     createConversation();
-    onClose();
+    if (isMobile) onClose();
   };
 
   const handleSelectConversation = (id: string) => {
     setCurrentConversation(id);
-    onClose();
+    if (isMobile) onClose();
   };
 
   const handleDeleteConversation = (e: React.MouseEvent, id: string) => {
@@ -124,11 +124,12 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
     <aside
       id="chat-sidebar-desktop"
       className={cn(
-        'hidden lg:block w-80 h-full bg-card border-r border-border flex-shrink-0',
-        !isOpen && "opacity-0 invisible"
+        'hidden lg:flex flex-col h-full bg-card border-r border-border transition-all duration-300 ease-in-out overflow-hidden',
+        isOpen ? "w-80" : "w-0 border-r-0"
       )}
     >
-      <SidebarContent
+      <div className="w-80 h-full flex flex-col flex-shrink-0">
+        <SidebarContent
         onClose={onClose}
         searchQuery={searchQuery}
         setSearchQuery={handleSearchChange}
@@ -142,6 +143,7 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
         loadMoreConversations={loadMoreConversations}
         formatDate={formatDate}
       />
+      </div>
     </aside>
   );
 };
