@@ -7,7 +7,7 @@ interface ChatHeaderProps {
 
 export const ChatHeader = ({ onOpenSidebar }: ChatHeaderProps) => {
   return (
-    <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-border bg-card/50 backdrop-blur-xl safe-area-inset-top">
+    <header className="flex-shrink-0 flex items-center justify-between px-4 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] pb-3 border-b border-border bg-card/50 backdrop-blur-xl">
       <div className="flex items-center gap-3">
         {/* Logo container - consistent sizing */}
         <div className="relative">
