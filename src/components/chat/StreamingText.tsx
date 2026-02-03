@@ -154,7 +154,7 @@ export const StreamingText = memo(({ content, isStreaming }: StreamingTextProps)
       <div className="prose prose-invert prose-sm max-w-none streaming-text">
         <ReactMarkdown
           components={{
-            code({ node, className, children, ...props }) {
+            code({ className, children, ...props }) {
               const match = /language-(\w+)/.exec(className || '');
               const isInline = !match && !className;
 
@@ -207,28 +207,28 @@ export const StreamingText = memo(({ content, isStreaming }: StreamingTextProps)
   // Streaming content with cursor
   return (
     <div className="prose prose-invert prose-sm max-w-none streaming-text">
-      <ReactMarkdown
-        components={{
-          code({ node, className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || '');
-            const isInline = !match && !className;
+        <ReactMarkdown
+          components={{
+            code({ className, children, ...props }) {
+              const match = /language-(\w+)/.exec(className || '');
+              const isInline = !match && !className;
 
-            if (isInline) {
+              if (isInline) {
+                return (
+                  <code
+                    className="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono text-sm"
+                    {...props}
+                  >
+                    {children}
+                  </code>
+                );
+              }
+
               return (
-                <code
-                  className="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono text-sm"
-                  {...props}
-                >
-                  {children}
-                </code>
+                <CodeBlock language={match ? match[1] : ''}>
+                  {String(children).replace(/\n$/, '')}
+                </CodeBlock>
               );
-            }
-
-            return (
-              <CodeBlock language={match ? match[1] : ''}>
-                {String(children).replace(/\n$/, '')}
-              </CodeBlock>
-            );
           },
           p({ children }) {
             return <p className="mb-4 last:mb-0 leading-relaxed text-foreground/90">{children}</p>;
