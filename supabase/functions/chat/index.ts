@@ -1,23 +1,140 @@
+/**
+ * @fileoverview Edge Function للدردشة مع الذكاء الاصطناعي
+ * 
+ * @description
+ * هذا الملف هو نقطة الاتصال بين الواجهة الأمامية وخدمة Lovable AI.
+ * يتعامل مع:
+ * - استقبال رسائل المستخدم
+ * - التحقق من صحة المدخلات
+ * - إرسال الطلبات إلى Gemini 3.0 Flash
+ * - بث الردود بتقنية SSE
+ * 
+ * @security
+ * ⚠️ WARNING: هذا الملف حساس أمنياً
+ * - يستخدم Zod للتحقق من المدخلات
+ * - يطهّر رسائل الأخطاء لمنع تسريب المعلومات
+ * - يتطلب Authorization header
+ * 
+ * @architecture
+ * ```
+ * Client Request
+ *     │
+ *     ▼
+ * ┌─────────────────────┐
+ * │   CORS Handling     │
+ * └──────────┬──────────┘
+ *            │
+ *            ▼
+ * ┌─────────────────────┐
+ * │   Auth Check        │
+ * └──────────┬──────────┘
+ *            │
+ *            ▼
+ * ┌─────────────────────┐
+ * │   Input Validation  │──► Zod Schema
+ * └──────────┬──────────┘
+ *            │
+ *            ▼
+ * ┌─────────────────────┐
+ * │   Lovable AI Call   │──► Gemini 3.0 Flash
+ * └──────────┬──────────┘
+ *            │
+ *            ▼
+ * ┌─────────────────────┐
+ * │   SSE Stream        │
+ * └─────────────────────┘
+ * ```
+ * 
+ * @endpoint POST /functions/v1/chat
+ * 
+ * @requestBody
+ * {
+ *   "messages": [
+ *     { "role": "user", "content": "..." },
+ *     { "role": "assistant", "content": "..." }
+ *   ]
+ * }
+ * 
+ * @responseType text/event-stream (SSE)
+ */
+
 /// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
+// ============================================================================
+// CORS CONFIGURATION
+// ============================================================================
+
+/**
+ * رؤوس CORS للسماح بالطلبات من أي مصدر
+ * 
+ * @note
+ * يجب أن تتضمن جميع الرؤوس التي يرسلها العميل
+ * 
+ * @security
+ * يمكن تقييد Access-Control-Allow-Origin لنطاق محدد في الإنتاج
+ */
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Input validation schema
+// ============================================================================
+// INPUT VALIDATION SCHEMAS
+// ============================================================================
+
+/**
+ * مخطط التحقق من الرسالة الواحدة
+ * 
+ * @validation
+ * - role: يجب أن يكون user أو assistant أو system
+ * - content: نص غير فارغ، حد أقصى 50,000 حرف
+ * 
+ * @security
+ * الحد الأقصى للمحتوى يمنع هجمات DoS
+ */
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),
-  content: z.string().min(1, "Message content cannot be empty").max(50000, "Message content too long"),
+  content: z.string()
+    .min(1, "Message content cannot be empty")
+    .max(50000, "Message content too long"),
 });
 
+/**
+ * مخطط التحقق من الطلب الكامل
+ * 
+ * @validation
+ * - messages: مصفوفة من الرسائل، حد أدنى 1، حد أقصى 100
+ * 
+ * @security
+ * الحد الأقصى للرسائل يمنع استنزاف الموارد
+ */
 const RequestSchema = z.object({
-  messages: z.array(MessageSchema).min(1, "At least one message required").max(100, "Too many messages"),
+  messages: z.array(MessageSchema)
+    .min(1, "At least one message required")
+    .max(100, "Too many messages"),
 });
 
+// ============================================================================
+// SYSTEM PROMPT
+// ============================================================================
+
+/**
+ * التعليمات الأساسية لنموذج الذكاء الاصطناعي
+ * 
+ * @description
+ * يحدد شخصية وخبرات ومعرفة "خبير Roblox"
+ * يتضمن:
+ * - قاموس Lua الشامل
+ * - أنماط البرمجة الشائعة
+ * - خدمات Roblox
+ * - معايير الأمان
+ * 
+ * @extensionPoint
+ * يمكن تعديل هذا النص لتخصيص سلوك المساعد
+ */
 const ROBLOX_EXPERT_SYSTEM_PROMPT = `أنت خبير Roblox Studio محترف ومتمكن. لديك معرفة عميقة وشاملة في:
 
 ## الخبرات الأساسية
@@ -175,13 +292,38 @@ return Character
 
 تذكر: أنت تساعد المطورين في إنشاء تجارب Roblox رائعة. كن دقيقاً وشاملاً.`;
 
+// ============================================================================
+// MAIN SERVER HANDLER
+// ============================================================================
+
+/**
+ * معالج الطلبات الرئيسي
+ * 
+ * @param req - كائن الطلب الوارد
+ * @returns Response - الاستجابة (SSE stream أو JSON error)
+ */
 serve(async (req) => {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STEP 1: HANDLE CORS PREFLIGHT
+  // ═══════════════════════════════════════════════════════════════════════════
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // 1. Verify API key is present (basic auth check)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STEP 2: VERIFY AUTHORIZATION HEADER
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    /**
+     * التحقق من وجود رأس التفويض
+     * 
+     * @security
+     * - يتطلب Bearer token
+     * - يستخدم anon key للتحقق من أن الطلب من التطبيق
+     * - لا يتحقق من JWT للمستخدم (التطبيق لا يتطلب تسجيل دخول)
+     */
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
@@ -193,12 +335,16 @@ serve(async (req) => {
       );
     }
 
-    // 2. Input validation - Parse and validate request body
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STEP 3: PARSE AND VALIDATE REQUEST BODY
+    // ═══════════════════════════════════════════════════════════════════════════
+    
     let parsedBody;
     try {
       const rawBody = await req.json();
       parsedBody = RequestSchema.parse(rawBody);
     } catch (validationError) {
+      // خطأ في التحقق من الصحة
       if (validationError instanceof z.ZodError) {
         return new Response(
           JSON.stringify({ 
@@ -211,6 +357,8 @@ serve(async (req) => {
           }
         );
       }
+      
+      // JSON غير صالح
       return new Response(
         JSON.stringify({ error: "Invalid JSON in request body" }),
         {
@@ -221,12 +369,35 @@ serve(async (req) => {
     }
 
     const { messages } = parsedBody;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STEP 4: VERIFY API KEY
+    // ═══════════════════════════════════════════════════════════════════════════
     
+    /**
+     * الحصول على مفتاح Lovable AI
+     * 
+     * @security
+     * ⚠️ WARNING: هذا المفتاح حساس ويجب عدم كشفه للعميل
+     */
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
+      // لا نكشف السبب الفعلي للعميل
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STEP 5: CALL LOVABLE AI GATEWAY
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    /**
+     * إرسال الطلب إلى Lovable AI Gateway
+     * 
+     * @model google/gemini-3-flash-preview
+     * @streaming true
+     * @maxTokens 8192
+     * @temperature 0.7 (توازن بين الإبداع والدقة)
+     */
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -245,7 +416,12 @@ serve(async (req) => {
       }),
     });
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STEP 6: HANDLE AI GATEWAY ERRORS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
     if (!response.ok) {
+      // Rate Limit
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
@@ -255,6 +431,8 @@ serve(async (req) => {
           }
         );
       }
+      
+      // Payment Required
       if (response.status === 402) {
         return new Response(
           JSON.stringify({ error: "Payment required, please add funds to continue." }),
@@ -264,8 +442,12 @@ serve(async (req) => {
           }
         );
       }
+      
+      // خطأ عام في البوابة
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
+      
+      // لا نكشف تفاصيل الخطأ للعميل
       return new Response(
         JSON.stringify({ error: "AI gateway error" }),
         {
@@ -275,13 +457,38 @@ serve(async (req) => {
       );
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STEP 7: STREAM RESPONSE TO CLIENT
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    /**
+     * إعادة توجيه الـ stream مباشرة للعميل
+     * 
+     * @format Server-Sent Events (SSE)
+     * @contentType text/event-stream
+     */
     return new Response(response.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
+    
   } catch (e) {
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ERROR HANDLING: CATCH-ALL
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    /**
+     * معالجة الأخطاء غير المتوقعة
+     * 
+     * @security
+     * - نسجل الخطأ كاملاً في console
+     * - نرسل رسالة عامة للعميل (لا نكشف التفاصيل)
+     */
     console.error("Chat function error:", e);
+    
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      JSON.stringify({ 
+        error: e instanceof Error ? e.message : "Unknown error" 
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
