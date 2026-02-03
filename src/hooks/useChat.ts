@@ -13,14 +13,14 @@ export const useChat = () => {
   const isLoading = useChatStore((state) => state.isLoading);
   const messages = useChatStore((state) => state.getMessages());
 
-  const {
-    addMessage,
-    updateMessage,
-    setMessageStreaming,
-    setLoading,
-    setAssistantTyping,
-    getMessages,
-  } = useChatStore.getState();
+  // Get stable references from store - these don't change between renders
+  const storeActions = useChatStore.getState();
+  const addMessage = storeActions.addMessage;
+  const updateMessage = storeActions.updateMessage;
+  const setMessageStreaming = storeActions.setMessageStreaming;
+  const setLoading = storeActions.setLoading;
+  const setAssistantTyping = storeActions.setAssistantTyping;
+  const getMessages = storeActions.getMessages;
 
   const sendMessage = useCallback(
     async (content: string, attachments: Attachment[] = []) => {
@@ -190,7 +190,7 @@ export const useChat = () => {
         setAssistantTyping(false);
       }
     },
-    [addMessage, updateMessage, setMessageStreaming, setLoading, setAssistantTyping, getMessages]
+    [] // Store actions are stable references, no dependencies needed
   );
 
   return {
