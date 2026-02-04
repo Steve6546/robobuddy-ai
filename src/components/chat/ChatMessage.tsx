@@ -3,11 +3,14 @@
  * 
  * @description
  * يعرض رسالة واحدة مع:
- * - أيقونة المرسل (مستخدم/مساعد)
  * - اسم المرسل
  * - المرفقات (صور/ملفات)
  * - المحتوى (مع دعم streaming)
  * - مؤشر التفكير (thinking indicator)
+ * 
+ * @note
+ * تمت إزالة الأيقونات الدائرية للمرسل حسب طلب المستخدم.
+ * الآن يظهر فقط اسم المرسل بتصميم نظيف.
  * 
  * @dependencies
  * - ThinkingIndicator: مؤشر التحميل الدائري
@@ -18,12 +21,11 @@
  * - يتجاهل التحديثات إذا لم تتغير الرسالة
  * 
  * @accessibility
- * - أيقونات بـ strokeWidth موحد
+ * - aria-live للمحتوى المتدفق
  * - تباين ألوان مناسب
  */
 
 import { memo } from 'react';
-import { Bot, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Message } from '@/stores/chatStore';
 import { ThinkingIndicator } from './ThinkingIndicator';
@@ -88,42 +90,24 @@ export const ChatMessage = memo(({ message }: ChatMessageProps) => {
   return (
     <div
       className={cn(
-        'message-enter flex gap-3 px-4 py-6',
+        'message-enter px-4 py-5',
         isUser
           ? 'bg-transparent border-r-2 border-foreground/10'
           : 'bg-card/30 border-l-2 border-foreground/10'
       )}
     >
       {/* ═══════════════════════════════════════════════════════════════════
-          AVATAR
-          
-          @size 32px (w-8 h-8)
-          @icons User/Bot with h-4 w-4
+          MESSAGE CONTENT - Clean Layout without Avatar
           ═══════════════════════════════════════════════════════════════════ */}
-      <div
-        className={cn(
-          'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-          isUser
-            ? 'bg-muted text-foreground'
-            : 'bg-foreground text-background'
-        )}
-      >
-        {isUser ? (
-          <User className="h-4 w-4" strokeWidth={2} />
-        ) : (
-          <Bot className="h-4 w-4" strokeWidth={2} />
-        )}
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════
-          MESSAGE CONTENT
-          ═══════════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 min-w-0 space-y-2">
+      <div className="max-w-3xl mx-auto space-y-2">
         {/* ───────────────────────────────────────────────────────────────────
-            SENDER NAME
+            SENDER NAME - Clean Text Only
             ─────────────────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground">
+          <span className={cn(
+            "text-sm font-semibold",
+            isUser ? "text-muted-foreground" : "text-foreground"
+          )}>
             {isUser ? 'أنت' : 'Roblox Expert'}
           </span>
         </div>
@@ -132,7 +116,7 @@ export const ChatMessage = memo(({ message }: ChatMessageProps) => {
             ATTACHMENTS (if any)
             ─────────────────────────────────────────────────────────────────── */}
         {message.attachments && message.attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-2">
             {message.attachments.map((attachment) => (
               <div key={attachment.id} className="relative group">
                 {attachment.type === 'image' ? (
@@ -160,8 +144,15 @@ export const ChatMessage = memo(({ message }: ChatMessageProps) => {
             - Waiting: shows ThinkingIndicator
             - Streaming: shows StreamingText with cursor
             - Complete: shows StreamingText without cursor
+            
+            @accessibility
+            - aria-live="polite" للمحتوى المتدفق
             ─────────────────────────────────────────────────────────────────── */}
-        <div className="relative min-h-[1.5rem]">
+        <div 
+          className="relative min-h-[1.5rem]"
+          aria-live={isStreaming ? "polite" : "off"}
+          aria-atomic="false"
+        >
           {/* Thinking indicator - visible when waiting */}
           <ThinkingIndicator isVisible={isWaiting} className="absolute inset-0" />
           

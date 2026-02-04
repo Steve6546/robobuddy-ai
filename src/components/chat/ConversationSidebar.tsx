@@ -1,21 +1,72 @@
+/**
+ * @fileoverview الشريط الجانبي للمحادثات - Conversations Sidebar
+ * 
+ * @description
+ * يعرض قائمة المحادثات السابقة مع:
+ * - إنشاء محادثة جديدة
+ * - البحث في المحادثات
+ * - حذف المحادثات
+ * - التنقل بين المحادثات
+ * 
+ * @responsive
+ * - Desktop: شريط جانبي ثابت
+ * - Mobile: overlay مع backdrop
+ * 
+ * @accessibility
+ * - aria-labels على جميع الأزرار
+ * - focus-visible للتنقل بلوحة المفاتيح
+ * - role="listbox" للقائمة
+ */
+
 import { MessageSquare, Plus, Trash2, X, Search } from 'lucide-react';
 import { useChatStore, Conversation } from '@/stores/chatStore';
 import { cn } from '@/lib/utils';
+import { formatRelativeDate } from '@/lib/dateUtils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useState, useMemo } from 'react';
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
 interface ConversationSidebarProps {
+  /** هل الشريط مفتوح؟ */
   isOpen: boolean;
+  /** دالة الإغلاق */
   onClose: () => void;
+  /** هل هذا عرض الموبايل؟ */
   isMobile?: boolean;
 }
 
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/**
+ * الحد الأقصى لعرض معاينة الرسالة
+ * @value 80 حرف
+ */
+const MAX_PREVIEW_LENGTH = 80;
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
 export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: ConversationSidebarProps) => {
+  // ─────────────────────────────────────────────────────────────────────────
+  // STATE
+  // ─────────────────────────────────────────────────────────────────────────
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // STORE
+  // ─────────────────────────────────────────────────────────────────────────
+  
   const conversations = useChatStore((state) => state.conversations);
   const currentConversationId = useChatStore((state) => state.currentConversationId);
   const visibleConversationsCount = useChatStore((state) => state.visibleConversationsCount);
@@ -26,6 +77,10 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
     deleteConversation,
     loadMoreConversations,
   } = useChatStore.getState();
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FILTERED DATA
+  // ─────────────────────────────────────────────────────────────────────────
 
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) return conversations;
@@ -39,6 +94,10 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
       return titleMatch || messageMatch;
     });
   }, [conversations, searchQuery]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // HANDLERS
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleSearchChange = (q: string) => {
     setSearchQuery(q);
@@ -68,15 +127,12 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
     deleteConversation(id);
   };
 
-  const formatDate = (date: Date) => {
-    const d = new Date(date);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return 'اليوم';
-    if (diffDays === 1) return 'أمس';
-    if (diffDays < 7) return `منذ ${diffDays} أيام`;
-    return d.toLocaleDateString('ar-SA');
+  /**
+   * اقتطاع النص مع إضافة ...
+   */
+  const truncateText = (text: string, maxLength: number = MAX_PREVIEW_LENGTH): string => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength).trim() + '...';
   };
 
   if (isMobile) {
@@ -110,7 +166,7 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
             handleDeleteConversation={handleDeleteConversation}
             hasMore={hasMore}
             loadMoreConversations={loadMoreConversations}
-            formatDate={formatDate}
+            truncateText={truncateText}
           />
         </aside>
       </>
@@ -138,12 +194,16 @@ export const ConversationSidebar = ({ isOpen, onClose, isMobile = false }: Conve
           handleDeleteConversation={handleDeleteConversation}
           hasMore={hasMore}
           loadMoreConversations={loadMoreConversations}
-          formatDate={formatDate}
+          truncateText={truncateText}
         />
       </div>
     </aside>
   );
 };
+
+// ============================================================================
+// SIDEBAR CONTENT COMPONENT
+// ============================================================================
 
 interface SidebarContentProps {
   onClose: () => void;
@@ -157,9 +217,16 @@ interface SidebarContentProps {
   handleDeleteConversation: (e: React.MouseEvent, id: string) => void;
   hasMore: boolean;
   loadMoreConversations: () => void;
-  formatDate: (date: Date) => string;
+  truncateText: (text: string, maxLength?: number) => string;
 }
 
+/**
+ * محتوى الشريط الجانبي
+ * 
+ * @description
+ * مكون داخلي يعرض محتوى الشريط الجانبي.
+ * تم فصله لإعادة الاستخدام بين Desktop و Mobile.
+ */
 function SidebarContent({
   onClose,
   searchQuery,
@@ -172,11 +239,13 @@ function SidebarContent({
   handleDeleteConversation,
   hasMore,
   loadMoreConversations,
-  formatDate
+  truncateText
 }: SidebarContentProps) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          HEADER
+          ═══════════════════════════════════════════════════════════════════ */}
       <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-border">
         <h2 className="text-lg font-semibold text-foreground">المحادثات</h2>
         <Button
@@ -190,8 +259,10 @@ function SidebarContent({
         </Button>
       </div>
 
-      {/* Action Area */}
-      <div className="flex-shrink-0 p-4 space-y-4">
+      {/* ═══════════════════════════════════════════════════════════════════
+          ACTION AREA
+          ═══════════════════════════════════════════════════════════════════ */}
+      <div className="flex-shrink-0 p-4 space-y-3">
         {/* New Chat Button */}
         <Button
           onClick={handleNewChat}
@@ -222,9 +293,19 @@ function SidebarContent({
         </div>
       </div>
 
-      {/* Conversations List - Internal scroll */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          CONVERSATIONS LIST
+          
+          @accessibility
+          - role="listbox" للقائمة
+          - aria-selected للعنصر النشط
+          ═══════════════════════════════════════════════════════════════════ */}
       <ScrollArea className="flex-1 px-2">
-        <div className="space-y-1 pb-4">
+        <div 
+          role="listbox" 
+          aria-label="قائمة المحادثات"
+          className="space-y-1 pb-4"
+        >
           {visibleConversations.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
               {searchQuery ? 'لا توجد نتائج للبحث' : 'لا توجد محادثات سابقة'}
@@ -238,55 +319,56 @@ function SidebarContent({
                 return (
                   <div
                     key={conversation.id}
+                    role="option"
+                    aria-selected={isActive}
                     className={cn(
-                      'group flex items-start gap-3 rounded-lg p-3 text-right transition-colors duration-200',
+                      'group flex items-center gap-2 rounded-lg p-2.5 text-right transition-colors duration-200',
                       isActive
                         ? 'bg-accent text-accent-foreground'
                         : 'text-foreground hover:bg-muted focus-within:bg-muted'
                     )}
                   >
+                    {/* Main Button - Compact Layout */}
                     <button
                       type="button"
                       onClick={() => handleSelectConversation(conversation.id)}
-                      className="flex flex-1 items-start gap-3 text-right outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
+                      className="flex flex-1 items-center gap-2.5 text-right outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-md min-w-0"
                     >
+                      {/* Icon */}
                       <div className="relative flex-shrink-0">
-                        <MessageSquare className="h-5 w-5 mt-0.5 text-muted-foreground" strokeWidth={2} />
+                        <MessageSquare className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
                         {conversation.unreadCount > 0 && (
-                          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                           </span>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium truncate">
-                            {conversation.title}
-                          </p>
-                          {conversation.unreadCount > 0 && (
-                            <Badge variant="default" className="h-4 px-1 min-w-[1rem] text-[10px]">
-                              {conversation.unreadCount}
-                            </Badge>
-                          )}
-                        </div>
-                        {lastMessage && (
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">
-                            {lastMessage.content}
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {formatDate(conversation.updatedAt)}
+                      
+                      {/* Content - Single Line */}
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <p className="text-sm font-medium truncate flex-1">
+                          {conversation.title}
                         </p>
+                        <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                          {formatRelativeDate(conversation.updatedAt)}
+                        </span>
+                        {conversation.unreadCount > 0 && (
+                          <Badge variant="default" className="h-4 px-1 min-w-[1rem] text-[10px] flex-shrink-0">
+                            {conversation.unreadCount}
+                          </Badge>
+                        )}
                       </div>
                     </button>
+                    
+                    {/* Delete Button */}
                     <button
                       type="button"
                       onClick={(e) => handleDeleteConversation(e, conversation.id)}
                       aria-label="حذف المحادثة"
-                      className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-destructive p-1 hover:bg-destructive/20 rounded transition-all flex-shrink-0"
+                      className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-destructive p-1.5 hover:bg-destructive/20 rounded transition-all flex-shrink-0"
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" strokeWidth={2} />
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" strokeWidth={2} />
                     </button>
                   </div>
                 );
@@ -307,8 +389,10 @@ function SidebarContent({
         </div>
       </ScrollArea>
 
-      {/* Footer */}
-      <div className="flex-shrink-0 p-4 border-t border-border">
+      {/* ═══════════════════════════════════════════════════════════════════
+          FOOTER
+          ═══════════════════════════════════════════════════════════════════ */}
+      <div className="flex-shrink-0 p-3 border-t border-border">
         <p className="text-xs text-muted-foreground text-center">
           المحادثات محفوظة محلياً
         </p>

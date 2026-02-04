@@ -66,7 +66,8 @@ src/
 │   ├── Index.tsx       # الصفحة الرئيسية
 │   └── NotFound.tsx    # صفحة 404
 ├── lib/
-│   └── utils.ts        # دوال مساعدة
+│   ├── utils.ts        # دوال مساعدة عامة
+│   └── dateUtils.ts    # دوال تنسيق التاريخ (DRY)
 ├── test/               # ملفات الاختبار
 └── index.css           # أنماط التصميم
 
@@ -97,9 +98,9 @@ supabase/
 function formatDateInComponent1(date: Date) { ... }
 function formatDateInComponent2(date: Date) { ... }
 
-// ✅ مطلوب
-// lib/utils.ts
-export function formatDate(date: Date): string { ... }
+// ✅ مطلوب: استخدام lib/dateUtils.ts
+import { formatRelativeDate } from '@/lib/dateUtils';
+// استخدم في أي مكان
 ```
 
 ### 3️⃣ كل ميزة جديدة يجب أن تكون قابلة للتوسعة
@@ -337,5 +338,6 @@ className="text-foreground bg-background"
 
 ---
 
-> **آخر تحديث:** 2024
+> **آخر تحديث:** 2025-02-04
 > **المُعد:** Lovable AI Assistant
+> **الإصدار:** 2.0 - تم إضافة dateUtils ودعم React Router v7 flags
