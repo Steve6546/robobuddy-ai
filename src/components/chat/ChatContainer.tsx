@@ -136,17 +136,6 @@ export const ChatContainer = () => {
     sendMessage(content, attachments);
   };
 
-  /**
-   * معالج الضغط على اقتراح سريع
-   * 
-   * @param prompt - النص المقترح للإرسال
-   * 
-   * @usedBy WelcomeScreen
-   */
-  const handleQuickPrompt = (prompt: string) => {
-    sendMessage(prompt, []);
-  };
-
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
@@ -183,7 +172,7 @@ export const ChatContainer = () => {
         >
           {messages.length === 0 ? (
             /* شاشة الترحيب عند عدم وجود رسائل */
-            <WelcomeScreen onPromptClick={handleQuickPrompt} />
+            <WelcomeScreen />
           ) : (
             /* قائمة الرسائل */
             <div className="divide-y divide-border/30">
