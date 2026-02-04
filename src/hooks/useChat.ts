@@ -46,6 +46,57 @@ import { toast } from 'sonner';
  */
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
+/**
+ * الحد الأقصى لحجم محتوى الملفات المرسلة كنص داخل الرسالة.
+ */
+const MAX_FILE_CONTENT_CHARS = 4000;
+
+/**
+ * التحقق من أنواع الملفات النصية القابلة للقراءة.
+ */
+const TEXT_MIME_TYPES = new Set([
+  'text/plain',
+  'text/markdown',
+  'application/json',
+  'application/xml',
+  'text/xml',
+  'application/javascript',
+  'text/javascript',
+  'application/x-lua',
+  'text/x-lua',
+]);
+
+const TEXT_EXTENSIONS = new Set(['.txt', '.md', '.json', '.xml', '.js', '.ts', '.lua']);
+
+const isTextFile = (attachment: Attachment) => {
+  if (attachment.mimeType && TEXT_MIME_TYPES.has(attachment.mimeType)) {
+    return true;
+  }
+  const lowerName = attachment.name.toLowerCase();
+  return Array.from(TEXT_EXTENSIONS).some((ext) => lowerName.endsWith(ext));
+};
+
+const decodeBase64ToText = (base64: string) => {
+  try {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  } catch {
+    return null;
+  }
+};
+
+const formatBytes = (bytes?: number) => {
+  if (!bytes && bytes !== 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+};
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -219,14 +270,40 @@ export const useChat = () => {
                 url: `data:${attachment.mimeType};base64,${attachment.base64}`,
               },
             });
-          } else if (attachment.type === 'file' && attachment.base64) {
-            // ملف: يُذكر كنص (الملف الفعلي لا يُرسل حالياً)
-            // TODO [FUTURE]: إضافة دعم كامل للملفات
-            contentParts.push({
-              type: 'text',
-              text: `[Attached file: ${attachment.name}]`,
-            });
+            return;
           }
+
+          if (attachment.type !== 'file') {
+            return;
+          }
+
+          const sizeLabel = formatBytes(attachment.size);
+          const metadata = [
+            `Attached file: ${attachment.name}`,
+            attachment.mimeType ? `type: ${attachment.mimeType}` : null,
+            sizeLabel ? `size: ${sizeLabel}` : null,
+          ]
+            .filter(Boolean)
+            .join(' | ');
+
+          if (attachment.base64 && isTextFile(attachment)) {
+            const decodedText = decodeBase64ToText(attachment.base64);
+            if (decodedText) {
+              const trimmed = decodedText.trim();
+              const contentSlice = trimmed.slice(0, MAX_FILE_CONTENT_CHARS);
+              const truncated = trimmed.length > MAX_FILE_CONTENT_CHARS;
+              contentParts.push({
+                type: 'text',
+                text: `${metadata}\n\n${contentSlice}${truncated ? '\n\n[Content truncated]' : ''}`,
+              });
+              return;
+            }
+          }
+
+          contentParts.push({
+            type: 'text',
+            text: `${metadata}\n\n[Binary file attached. Content not included.]`,
+          });
         });
         
         userContent = contentParts;
