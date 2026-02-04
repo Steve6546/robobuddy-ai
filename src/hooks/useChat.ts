@@ -50,6 +50,7 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
  * الحد الأقصى لحجم محتوى الملفات المرسلة كنص داخل الرسالة.
  */
 const MAX_FILE_CONTENT_CHARS = 4000;
+const MAX_FILE_DECODE_BYTES = 200 * 1024;
 
 /**
  * التحقق من أنواع الملفات النصية القابلة للقراءة.
@@ -87,6 +88,11 @@ const decodeBase64ToText = (base64: string) => {
   } catch {
     return null;
   }
+};
+
+const estimateBase64Bytes = (base64: string) => {
+  const sanitized = base64.replace(/=+$/, '');
+  return Math.floor((sanitized.length * 3) / 4);
 };
 
 const formatBytes = (bytes?: number) => {
@@ -287,6 +293,14 @@ export const useChat = () => {
             .join(' | ');
 
           if (attachment.base64 && isTextFile(attachment)) {
+            const attachmentSize = attachment.size ?? estimateBase64Bytes(attachment.base64);
+            if (attachmentSize > MAX_FILE_DECODE_BYTES) {
+              contentParts.push({
+                type: 'text',
+                text: `${metadata}\n\n[Text file too large to include. Size limit: ${formatBytes(MAX_FILE_DECODE_BYTES)}]`,
+              });
+              return;
+            }
             const decodedText = decodeBase64ToText(attachment.base64);
             if (decodedText) {
               const trimmed = decodedText.trim();
