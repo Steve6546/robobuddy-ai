@@ -1,4 +1,5 @@
 import { Code, Lightbulb, Zap, Layout, Shield, FileCode } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const skills = [
   {
@@ -86,13 +87,15 @@ export const WelcomeScreen = ({ onPromptClick }: WelcomeScreenProps) => {
           </h2>
           <div className="flex flex-wrap justify-center gap-2">
             {quickPrompts.map((prompt) => (
-              <button
+              <Button
                 key={prompt}
                 onClick={() => onPromptClick(prompt)}
-                className="px-3 py-2 text-sm bg-muted hover:bg-accent text-foreground rounded-lg border border-border hover:border-foreground/20 transition-all duration-200"
+                variant="ghost"
+                size="sm"
+                className="h-auto max-w-[16rem] whitespace-normal break-words rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground leading-relaxed transition-all duration-200 hover:bg-accent hover:text-foreground hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {prompt}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
