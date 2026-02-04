@@ -215,7 +215,8 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
         name: file.name,
         url,
         base64: base64.split(',')[1], // إزالة data:mime/type;base64,
-        mimeType: file.type
+        mimeType: file.type,
+        size: file.size
       });
     };
     
