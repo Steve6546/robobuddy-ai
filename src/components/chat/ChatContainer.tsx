@@ -7,7 +7,7 @@
  * - عرض الرسائل
  * - التمرير التلقائي
  * - الشريط الجانبي للمحادثات
- * - شاشة الترحيب
+ * - المساحة الفارغة عند عدم وجود رسائل
  * 
  * @dependencies
  * - useChat: للحصول على الرسائل وإرسالها
@@ -22,7 +22,6 @@
  * │  │   Sidebar    │  ├────────────────────────────────────┤  │
  * │  │  (Desktop)   │  │                                    │  │
  * │  │              │  │         Messages Area              │  │
- * │  │              │  │      (or WelcomeScreen)            │  │
  * │  │              │  │                                    │  │
  * │  │              │  ├────────────────────────────────────┤  │
  * │  │              │  │           ChatInput                │  │
@@ -43,7 +42,6 @@ import { useRef, useEffect, useState } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ChatHeader } from './ChatHeader';
-import { WelcomeScreen } from './WelcomeScreen';
 import { ConversationSidebar } from './ConversationSidebar';
 import { useChat } from '@/hooks/useChat';
 import { useChatStore } from '@/stores/chatStore';
@@ -136,17 +134,6 @@ export const ChatContainer = () => {
     sendMessage(content, attachments);
   };
 
-  /**
-   * معالج الضغط على اقتراح سريع
-   * 
-   * @param prompt - النص المقترح للإرسال
-   * 
-   * @usedBy WelcomeScreen
-   */
-  const handleQuickPrompt = (prompt: string) => {
-    sendMessage(prompt, []);
-  };
-
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
@@ -181,19 +168,13 @@ export const ChatContainer = () => {
           ref={messagesContainerRef}
           className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth"
         >
-          {messages.length === 0 ? (
-            /* شاشة الترحيب عند عدم وجود رسائل */
-            <WelcomeScreen onPromptClick={handleQuickPrompt} />
-          ) : (
-            /* قائمة الرسائل */
-            <div className="divide-y divide-border/30">
-              {messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
-              ))}
-              {/* عنصر فارغ للتمرير لأسفله */}
-              <div ref={messagesEndRef} className="h-1" />
-            </div>
-          )}
+          <div className="divide-y divide-border/30">
+            {messages.map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))}
+            {/* عنصر فارغ للتمرير لأسفله */}
+            <div ref={messagesEndRef} className="h-1" />
+          </div>
         </div>
 
         {/* ───────────────────────────────────────────────────────────────────
