@@ -88,8 +88,10 @@ export const ChatMessage = memo(({ message }: ChatMessageProps) => {
   return (
     <div
       className={cn(
-        'message-enter flex gap-3 px-4 py-5',
-        isUser ? 'bg-transparent' : 'bg-card/30'
+        'message-enter flex gap-3 px-4 py-6',
+        isUser
+          ? 'bg-transparent border-r-2 border-foreground/10'
+          : 'bg-card/30 border-l-2 border-foreground/10'
       )}
     >
       {/* ═══════════════════════════════════════════════════════════════════

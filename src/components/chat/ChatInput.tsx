@@ -301,7 +301,11 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
               variant="ghost" 
               size="icon" 
               aria-label="إضافة مرفقات"
-              className="h-10 w-10 rounded-xl bg-muted hover:bg-accent text-muted-foreground hover:text-foreground transition-all flex-shrink-0"
+              className={cn(
+                "h-10 w-10 rounded-xl border border-border bg-muted text-muted-foreground transition-all flex-shrink-0",
+                "hover:bg-accent hover:text-foreground",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              )}
             >
               <Plus className="h-5 w-5" strokeWidth={2} />
             </Button>
@@ -381,8 +385,9 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           size="icon" 
           aria-label="إرسال الرسالة"
           className={cn(
-            'h-10 w-10 rounded-xl transition-all duration-200 flex-shrink-0',
-            'bg-foreground hover:bg-foreground/90 text-background',
+            'h-10 w-10 rounded-xl border border-border transition-all duration-200 flex-shrink-0',
+            'bg-foreground text-background hover:bg-foreground/90',
+            'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
             'disabled:opacity-50 disabled:cursor-not-allowed'
           )}
         >
