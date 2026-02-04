@@ -85,14 +85,14 @@ export const WelcomeScreen = ({ onPromptClick }: WelcomeScreenProps) => {
           <h2 className="text-sm font-medium text-muted-foreground text-center">
             جرب السؤال عن:
           </h2>
-          <div className="flex flex-wrap justify-center gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg mx-auto">
             {quickPrompts.map((prompt) => (
               <Button
                 key={prompt}
                 onClick={() => onPromptClick(prompt)}
                 variant="ghost"
                 size="sm"
-                className="h-auto max-w-[16rem] whitespace-normal break-words rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground leading-relaxed transition-all duration-200 hover:bg-accent hover:text-foreground hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="h-auto whitespace-normal break-words text-wrap rounded-lg border border-border bg-muted px-3 py-2.5 text-sm text-foreground leading-relaxed text-right transition-all duration-200 hover:bg-accent hover:text-foreground hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {prompt}
               </Button>
