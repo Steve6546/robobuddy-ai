@@ -233,56 +233,64 @@ function SidebarContent({
             <>
               {visibleConversations.map((conversation) => {
                 const lastMessage = conversation.messages[conversation.messages.length - 1];
+                const isActive = conversation.id === currentConversationId;
 
                 return (
-                  <button
+                  <div
                     key={conversation.id}
-                    onClick={() => handleSelectConversation(conversation.id)}
                     className={cn(
-                      'w-full flex items-start gap-3 p-3 rounded-lg text-right',
-                      'transition-colors duration-200 group',
-                      conversation.id === currentConversationId
-                        ? 'bg-accent text-accent-foreground'
-                        : 'hover:bg-muted text-foreground'
+                      'group flex items-start gap-3 rounded-lg p-3 text-right transition-colors duration-200',
+                      'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background',
+                      isActive
+                        ? 'bg-accent text-accent-foreground ring-1 ring-foreground/15'
+                        : 'text-foreground hover:bg-muted focus-within:bg-muted'
                     )}
                   >
-                    <div className="relative flex-shrink-0">
-                      <MessageSquare className="h-5 w-5 mt-0.5 text-muted-foreground" strokeWidth={2} />
-                      {conversation.unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium truncate">
-                          {conversation.title}
-                        </p>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectConversation(conversation.id)}
+                      aria-current={isActive ? 'true' : undefined}
+                      className="flex flex-1 items-start gap-3 text-right outline-none rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    >
+                      <div className="relative flex-shrink-0">
+                        <MessageSquare className="h-5 w-5 mt-0.5 text-muted-foreground" strokeWidth={2} />
                         {conversation.unreadCount > 0 && (
-                          <Badge variant="default" className="h-4 px-1 min-w-[1rem] text-[10px]">
-                            {conversation.unreadCount}
-                          </Badge>
+                          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                          </span>
                         )}
                       </div>
-                      {lastMessage && (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
-                          {lastMessage.content}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium truncate">
+                            {conversation.title}
+                          </p>
+                          {conversation.unreadCount > 0 && (
+                            <Badge variant="default" className="h-4 px-1 min-w-[1rem] text-[10px]">
+                              {conversation.unreadCount}
+                            </Badge>
+                          )}
+                        </div>
+                        {lastMessage && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {lastMessage.content}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDate(conversation.updatedAt)}
                         </p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatDate(conversation.updatedAt)}
-                      </p>
-                    </div>
+                      </div>
+                    </button>
                     <button
+                      type="button"
                       onClick={(e) => handleDeleteConversation(e, conversation.id)}
                       aria-label="حذف المحادثة"
                       className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-destructive p-1 hover:bg-destructive/20 rounded transition-all flex-shrink-0"
                     >
                       <Trash2 className="h-4 w-4 text-destructive" strokeWidth={2} />
                     </button>
-                  </button>
+                  </div>
                 );
               })}
 

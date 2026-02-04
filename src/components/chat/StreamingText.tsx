@@ -336,7 +336,10 @@ export const StreamingText = memo(({ content, isStreaming }: StreamingTextProps)
   // المحتوى المكتمل (بدون مؤشر)
   if (!isStreaming && content && displayedContent.length >= content.length) {
     return (
-      <div className="prose prose-invert prose-sm max-w-none streaming-text">
+      <div
+        className="prose prose-invert prose-sm max-w-none streaming-text"
+        aria-live="off"
+      >
         <ReactMarkdown components={markdownComponents}>
           {content}
         </ReactMarkdown>
@@ -346,7 +349,12 @@ export const StreamingText = memo(({ content, isStreaming }: StreamingTextProps)
 
   // المحتوى أثناء البث (مع مؤشر)
   return (
-    <div className="prose prose-invert prose-sm max-w-none streaming-text">
+    <div
+      className="prose prose-invert prose-sm max-w-none streaming-text"
+      aria-live="polite"
+      aria-atomic="false"
+      aria-relevant="additions text"
+    >
       <ReactMarkdown components={markdownComponents}>
         {displayedContent}
       </ReactMarkdown>
