@@ -24,11 +24,10 @@
  */
 
 import { useState, useRef, useCallback, KeyboardEvent, useEffect } from 'react';
-import { Send, Plus, ImageIcon, FileText, X } from 'lucide-react';
+import { Send, Plus, FileText, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChatStore, Attachment } from '@/stores/chatStore';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // ============================================================================
 // TYPES
@@ -83,11 +82,8 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   /** مرجع حقل النص */
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  /** مرجع إدخال الملفات */
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  /** مرجع إدخال الصور */
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  /** مرجع إدخال المرفقات (صور + ملفات) */
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   
   // ─────────────────────────────────────────────────────────────────────────
   // STORE SUBSCRIPTIONS
@@ -224,23 +220,15 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   };
 
   /**
-   * معالج اختيار الصور
+   * معالج اختيار المرفقات (صور + ملفات)
    */
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachmentSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach(file => processFile(file, 'image'));
-    }
-    e.target.value = ''; // إعادة ضبط للسماح باختيار نفس الملف
-  };
-
-  /**
-   * معالج اختيار الملفات
-   */
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      Array.from(files).forEach(file => processFile(file, 'file'));
+      Array.from(files).forEach(file => {
+        const isImage = file.type.startsWith('image/');
+        processFile(file, isImage ? 'image' : 'file');
+      });
     }
     e.target.value = '';
   };
@@ -249,151 +237,147 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
 
+  const imageAttachments = pendingAttachments.filter(attachment => attachment.type === 'image');
+  const fileAttachments = pendingAttachments.filter(attachment => attachment.type === 'file');
+
   return (
     <div className="flex-shrink-0 border-t border-border bg-card/50 backdrop-blur-xl px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
       {/* ═══════════════════════════════════════════════════════════════════
           ATTACHMENTS PREVIEW
           ═══════════════════════════════════════════════════════════════════ */}
-      {pendingAttachments.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3">
-          {pendingAttachments.map(attachment => (
-            <div 
-              key={attachment.id} 
-              className="relative group flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border"
-            >
-              {attachment.type === 'image' ? (
-                <img 
-                  src={attachment.url} 
-                  alt={attachment.name} 
-                  className="h-10 w-10 rounded object-cover" 
-                />
-              ) : (
-                <FileText className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
-              )}
-              <span className="text-sm text-foreground max-w-28 truncate">
-                {attachment.name}
-              </span>
-              {/* 
-                زر الإزالة
-                @accessibility focus-visible:opacity-100 للوصول بلوحة المفاتيح
-              */}
-              <button 
-                onClick={() => removeAttachment(attachment.id)} 
-                aria-label="إزالة المرفق"
-                className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring transition-opacity"
+      <div className="mb-3 flex flex-col gap-3">
+        {imageAttachments.length > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {imageAttachments.map(attachment => (
+              <div
+                key={attachment.id}
+                className="relative group rounded-xl border border-border bg-muted/60 p-1"
               >
-                <X className="h-3 w-3" strokeWidth={2} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+                <img
+                  src={attachment.url}
+                  alt={attachment.name}
+                  className="h-20 w-full rounded-lg object-cover"
+                />
+                <button
+                  onClick={() => removeAttachment(attachment.id)}
+                  aria-label="إزالة المرفق"
+                  className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring transition-opacity"
+                >
+                  <X className="h-3 w-3" strokeWidth={2} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {fileAttachments.length > 0 && (
+          <div className="grid gap-2">
+            {fileAttachments.map(attachment => (
+              <div
+                key={attachment.id}
+                className="relative group flex items-center gap-3 rounded-xl border border-border bg-muted/60 px-3 py-2"
+              >
+                <FileText className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
+                <span className="text-sm text-foreground truncate">
+                  {attachment.name}
+                </span>
+                <button
+                  onClick={() => removeAttachment(attachment.id)}
+                  aria-label="إزالة المرفق"
+                  className="ml-auto rounded-full p-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <X className="h-3 w-3" strokeWidth={2} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
           INPUT ROW
           ═══════════════════════════════════════════════════════════════════ */}
-      <div className="gap-2 flex-row flex items-end justify-end">
-        {/* ───────────────────────────────────────────────────────────────────
-            ATTACHMENT BUTTON
-            ─────────────────────────────────────────────────────────────────── */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              aria-label="إضافة مرفقات"
-              className={cn(
-                "h-10 w-10 rounded-xl border border-border bg-muted text-muted-foreground transition-all flex-shrink-0",
-                "hover:bg-accent hover:text-foreground",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              )}
-            >
-              <Plus className="h-5 w-5" strokeWidth={2} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-44">
-            <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-              <ImageIcon className="h-4 w-4 mr-2" strokeWidth={2} />
-              رفع صورة
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-              <FileText className="h-4 w-4 mr-2" strokeWidth={2} />
-              رفع ملف
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* ───────────────────────────────────────────────────────────────────
-            HIDDEN FILE INPUTS
-            ─────────────────────────────────────────────────────────────────── */}
-        <input 
-          ref={imageInputRef} 
-          type="file" 
-          accept="image/*" 
-          multiple 
-          className="hidden" 
-          onChange={handleImageSelect} 
-        />
-        <input 
-          ref={fileInputRef} 
-          type="file" 
-          accept={ALLOWED_FILE_TYPES}
-          multiple 
-          className="hidden" 
-          onChange={handleFileSelect} 
-        />
-
+      <div className="flex flex-col gap-3">
         {/* ───────────────────────────────────────────────────────────────────
             TEXT INPUT
             ─────────────────────────────────────────────────────────────────── */}
-        <div className="flex-1 relative">
-          <textarea 
-            ref={textareaRef} 
-            value={value} 
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            value={value}
             onChange={e => {
               const newValue = e.target.value;
               setValue(newValue);
               handleResize();
-              
+
               // حفظ المسودة تلقائياً
               if (currentConversationId) {
                 setDraft(currentConversationId, newValue);
               }
-            }} 
-            onKeyDown={handleKeyDown} 
-            placeholder="اسأل عن Roblox Studio..." 
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="اسأل عن Roblox Studio..."
             aria-label="اكتب رسالتك هنا"
-            disabled={disabled} 
-            rows={1} 
-            dir="auto" 
+            disabled={disabled}
+            rows={1}
+            dir="auto"
             className={cn(
               'w-full resize-none rounded-xl border border-border bg-muted/50 px-4 py-3',
-              'text-foreground placeholder:text-muted-foreground',
+              'text-foreground placeholder:text-muted-foreground text-base',
               'focus:outline-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30',
               'transition-all duration-200',
               'disabled:opacity-50 disabled:cursor-not-allowed',
-              'max-h-40'
-            )} 
+              'max-h-40 min-h-[52px] overflow-y-auto'
+            )}
           />
         </div>
 
         {/* ───────────────────────────────────────────────────────────────────
-            SEND BUTTON
+            ACTION ROW
             ─────────────────────────────────────────────────────────────────── */}
-        <Button 
-          onClick={handleSubmit} 
-          disabled={disabled || (!value.trim() && pendingAttachments.length === 0)} 
-          size="icon" 
-          aria-label="إرسال الرسالة"
-          className={cn(
-            'h-10 w-10 rounded-xl border border-border transition-all duration-200 flex-shrink-0',
-            'bg-foreground text-background hover:bg-foreground/90',
-            'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-            'disabled:opacity-50 disabled:cursor-not-allowed'
-          )}
-        >
-          <Send className="h-4 w-4" strokeWidth={2} />
-        </Button>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="إضافة مرفقات"
+            onClick={() => attachmentInputRef.current?.click()}
+            className={cn(
+              'h-11 w-11 rounded-xl border border-border bg-muted text-muted-foreground transition-all',
+              'hover:bg-accent hover:text-foreground',
+              'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+            )}
+          >
+            <Plus className="h-5 w-5" strokeWidth={2} />
+          </Button>
+
+          <Button
+            onClick={handleSubmit}
+            disabled={disabled || (!value.trim() && pendingAttachments.length === 0)}
+            size="icon"
+            aria-label="إرسال الرسالة"
+            className={cn(
+              'h-11 w-11 rounded-xl border border-border transition-all duration-200',
+              'bg-foreground text-background hover:bg-foreground/90',
+              'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'disabled:opacity-50 disabled:cursor-not-allowed'
+            )}
+          >
+            <Send className="h-4 w-4" strokeWidth={2} />
+          </Button>
+        </div>
+
+        {/* ───────────────────────────────────────────────────────────────────
+            HIDDEN FILE INPUT
+            ─────────────────────────────────────────────────────────────────── */}
+        <input
+          ref={attachmentInputRef}
+          type="file"
+          accept={`image/*,${ALLOWED_FILE_TYPES}`}
+          multiple
+          className="hidden"
+          onChange={handleAttachmentSelect}
+        />
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
