@@ -141,7 +141,7 @@ export const ChatContainer = () => {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 flex bg-background overflow-hidden">
+    <div className="fixed inset-0 flex h-[100dvh] bg-background overflow-hidden">
       {/* ═══════════════════════════════════════════════════════════════════
           DESKTOP SIDEBAR
           ═══════════════════════════════════════════════════════════════════ */}
@@ -168,7 +168,7 @@ export const ChatContainer = () => {
             ─────────────────────────────────────────────────────────────────── */}
         <div 
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth"
+          className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth overscroll-contain touch-pan-y"
         >
           {messages.length === 0 ? (
             /* شاشة الترحيب عند عدم وجود رسائل */
