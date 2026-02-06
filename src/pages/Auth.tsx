@@ -3,14 +3,15 @@
  * 
  * @description
  * صفحة تسجيل دخول احترافية مع:
- * - صندوق أكواد متحركة (محادثة وهمية مع AI)
+ * - خلفية متحركة (محادثة وهمية مع AI)
  * - تسجيل دخول بـ Google و Apple
  * - أنميشن سلسة
  * - دعم RTL
+ * - تصميم متجاوب
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Bot, Sparkles, Code2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { lovable } from '@/integrations/lovable';
@@ -56,14 +57,9 @@ function ShopSystem.new()
     return self
 end
 
-function ShopSystem:addItem(id, name, price)
-    self.items[id] = {name = name, price = price}
-end
-
 function ShopSystem:purchase(player, itemId)
     local item = self.items[itemId]
     if not item then return false end
-    -- معالجة الشراء
     return true
 end`
   },
@@ -82,18 +78,17 @@ function AnimationController:loadAnimation(humanoid, animId)
     return humanoid:LoadAnimation(animation)
 end
 
-function AnimationController:playAnimation(track, options)
-    track:Play(options.fadeTime or 0.1)
-    track:AdjustSpeed(options.speed or 1)
+function AnimationController:playAnimation(track)
+    track:Play(0.1)
 end`
   }
 ];
 
 // ============================================================================
-// CODE ANIMATION COMPONENT
+// BACKGROUND CODE ANIMATION COMPONENT
 // ============================================================================
 
-const CodeAnimation = () => {
+const BackgroundCodeAnimation = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
@@ -112,12 +107,11 @@ const CodeAnimation = () => {
         clearInterval(typingInterval);
         setIsTyping(false);
         
-        // الانتقال للرسالة التالية بعد تأخير
         setTimeout(() => {
           setCurrentIndex((prev) => (prev + 1) % MOCK_CONVERSATIONS.length);
         }, 2000);
       }
-    }, 20);
+    }, 25);
 
     return () => clearInterval(typingInterval);
   }, [currentIndex]);
@@ -126,57 +120,76 @@ const CodeAnimation = () => {
   const isUser = conversation.role === 'user';
 
   return (
-    <div className="h-full flex flex-col bg-background/50 backdrop-blur-xl rounded-2xl border border-border overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card/50">
-        <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center">
-          <Code2 className="h-4 w-4 text-background" />
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Roblox Expert</h3>
-          <p className="text-xs text-muted-foreground">يجيب على استفساراتك</p>
-        </div>
-        <div className="mr-auto flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs text-muted-foreground">متصل</span>
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-background/95 to-background z-10" />
+      
+      {/* Animated Code Box - Left Side */}
+      <div className="absolute left-8 top-1/4 w-80 opacity-20 transform -rotate-6 hidden lg:block">
+        <div className="bg-card/50 rounded-xl border border-border/50 p-4 backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Code2 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Lua</span>
+          </div>
+          <pre className="font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+{`local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local function onPlayerJoin(player)
+    print("Welcome, " .. player.Name)
+end
+
+Players.PlayerAdded:Connect(onPlayerJoin)`}
+          </pre>
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 p-4 overflow-hidden">
-        <div className={cn(
-          "rounded-xl p-4 transition-all duration-500",
-          isUser 
-            ? "bg-muted/50 border border-border ml-8" 
-            : "bg-card/80 border border-foreground/10 mr-8"
-        )}>
-          {/* Sender */}
-          <div className="flex items-center gap-2 mb-2">
-            <span className={cn(
-              "text-xs font-medium",
-              isUser ? "text-muted-foreground" : "text-foreground"
-            )}>
+      {/* Animated Code Box - Right Side */}
+      <div className="absolute right-8 top-1/3 w-72 opacity-15 transform rotate-3 hidden lg:block">
+        <div className="bg-card/50 rounded-xl border border-border/50 p-4 backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Code2 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Lua</span>
+          </div>
+          <pre className="font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+{`local TweenService = game:GetService("TweenService")
+
+local function animate(part, goal)
+    local tween = TweenService:Create(
+        part, 
+        TweenInfo.new(1),
+        goal
+    )
+    tween:Play()
+end`}
+          </pre>
+        </div>
+      </div>
+
+      {/* Main Animated Conversation - Center Background */}
+      <div className="absolute left-1/2 top-2/3 transform -translate-x-1/2 w-96 opacity-10 hidden md:block">
+        <div className="bg-card/50 rounded-xl border border-border/50 p-4 backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Bot className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">
               {isUser ? 'أنت' : 'Roblox Expert'}
             </span>
-            {!isUser && <Sparkles className="h-3 w-3 text-primary" />}
           </div>
-
-          {/* Content */}
-          <div className="font-mono text-sm leading-relaxed whitespace-pre-wrap text-foreground/90" dir="auto">
+          <div className="font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed" dir="auto">
             {displayedText}
             {isTyping && (
-              <span className="inline-block w-0.5 h-4 bg-foreground ml-0.5 animate-pulse" />
+              <span className="inline-block w-0.5 h-3 bg-muted-foreground ml-0.5 animate-pulse" />
             )}
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-border bg-card/30">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Bot className="h-3.5 w-3.5" />
-          <span>مدعوم بـ Gemini 3.0 Flash</span>
-        </div>
+      {/* Floating Elements */}
+      <div className="absolute left-20 bottom-1/4 opacity-10 animate-pulse">
+        <Sparkles className="h-8 w-8 text-muted-foreground" />
+      </div>
+      <div className="absolute right-32 bottom-1/3 opacity-10 animate-pulse delay-500">
+        <Code2 className="h-6 w-6 text-muted-foreground" />
       </div>
     </div>
   );
@@ -229,22 +242,23 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex" dir="rtl">
-      {/* ═══════════════════════════════════════════════════════════════════
-          RIGHT SIDE: Login Form
-          ═══════════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 flex items-center justify-center p-8">
+    <div className="fixed inset-0 bg-background overflow-hidden" dir="rtl">
+      {/* Background Animation */}
+      <BackgroundCodeAnimation />
+
+      {/* Main Content - Centered */}
+      <div className="relative z-20 h-full flex items-center justify-center p-4">
         <div className="w-full max-w-md space-y-8">
           {/* Logo & Title */}
           <div className="text-center space-y-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-foreground shadow-glow mx-auto">
-              <Bot className="h-8 w-8 text-background" />
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-foreground shadow-2xl mx-auto">
+              <Bot className="h-10 w-10 text-background" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">
+              <h1 className="text-3xl font-bold text-foreground">
                 Roblox Expert
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="text-muted-foreground mt-2 text-lg">
                 مساعدك الذكي في عالم Roblox Studio
               </p>
             </div>
@@ -257,10 +271,10 @@ const Auth = () => {
               onClick={() => handleSignIn('google')}
               disabled={isLoading !== null}
               className={cn(
-                "w-full h-12 rounded-xl text-base font-medium transition-all duration-300",
-                "bg-card hover:bg-accent text-foreground border border-border",
+                "w-full h-14 rounded-xl text-base font-medium transition-all duration-300",
+                "bg-card/80 hover:bg-card text-foreground border border-border",
                 "flex items-center justify-center gap-3",
-                "shadow-sm hover:shadow-md"
+                "shadow-lg hover:shadow-xl backdrop-blur-sm"
               )}
             >
               {isLoading === 'google' ? (
@@ -293,10 +307,10 @@ const Auth = () => {
               onClick={() => handleSignIn('apple')}
               disabled={isLoading !== null}
               className={cn(
-                "w-full h-12 rounded-xl text-base font-medium transition-all duration-300",
+                "w-full h-14 rounded-xl text-base font-medium transition-all duration-300",
                 "bg-foreground hover:bg-foreground/90 text-background",
                 "flex items-center justify-center gap-3",
-                "shadow-sm hover:shadow-md"
+                "shadow-lg hover:shadow-xl"
               )}
             >
               {isLoading === 'apple' ? (
@@ -312,27 +326,22 @@ const Auth = () => {
 
           {/* Error Message */}
           {error && (
-            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm text-center">
+            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm text-center backdrop-blur-sm">
               {error}
             </div>
           )}
 
           {/* Terms */}
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-sm text-muted-foreground text-center">
             بتسجيل الدخول، أنت توافق على{' '}
-            <a href="#" className="text-foreground hover:underline">شروط الخدمة</a>
+            <Link to="/terms" className="text-foreground hover:underline font-medium">
+              شروط الخدمة
+            </Link>
             {' '}و{' '}
-            <a href="#" className="text-foreground hover:underline">سياسة الخصوصية</a>
+            <Link to="/privacy" className="text-foreground hover:underline font-medium">
+              سياسة الخصوصية
+            </Link>
           </p>
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════
-          LEFT SIDE: Code Animation (Hidden on mobile)
-          ═══════════════════════════════════════════════════════════════════ */}
-      <div className="hidden lg:flex flex-1 items-center justify-center p-8 bg-muted/30 border-r border-border">
-        <div className="w-full max-w-lg h-[500px]">
-          <CodeAnimation />
         </div>
       </div>
     </div>
