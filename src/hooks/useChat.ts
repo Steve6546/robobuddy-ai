@@ -2,31 +2,8 @@
  * @fileoverview Hook رئيسي لإدارة إرسال واستقبال الرسائل
  * 
  * @description
- * هذا الـ Hook يعمل كجسر بين واجهة المستخدم والخادم.
- * يدير:
- * - إرسال الرسائل مع المرفقات
- * - استقبال الردود بتقنية Streaming (SSE)
- * - حالات التحميل والأخطاء
- * 
- * @dependencies
- * - useChatStore: للوصول للحالة المركزية
- * - sonner: لعرض إشعارات الأخطاء
- * 
- * @impact
- * ⚠️ WARNING: أي تعديل يؤثر على:
- * - ChatContainer.tsx: يستخدم sendMessage
- * - ChatInput.tsx: يعتمد على حالة isLoading
- * 
- * @architecture
- * ```
- * useChat Hook
- *     │
- *     ├── Reads from Store ──► messages, isLoading
- *     │
- *     ├── Calls Edge Function ──► /functions/v1/chat
- *     │
- *     └── Updates Store ──► addMessage, updateMessage, setStreaming
- * ```
+ * يدير إرسال الرسائل مع المرفقات واستقبال الردود بتقنية Streaming (SSE)
+ * مع دعم إعادة التوليد
  */
 
 import { useCallback } from 'react';
@@ -37,24 +14,10 @@ import { toast } from 'sonner';
 // CONSTANTS
 // ============================================================================
 
-/**
- * رابط Edge Function للدردشة
- * 
- * @note
- * يستخدم متغير البيئة VITE_SUPABASE_URL
- * يجب التأكد من تكوينه في .env
- */
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
-
-/**
- * الحد الأقصى لحجم محتوى الملفات المرسلة كنص داخل الرسالة.
- */
 const MAX_FILE_CONTENT_CHARS = 4000;
 const MAX_FILE_DECODE_BYTES = 200 * 1024;
 
-/**
- * التحقق من أنواع الملفات النصية القابلة للقراءة.
- */
 const TEXT_MIME_TYPES = new Set([
   'text/plain',
   'text/markdown',
@@ -107,17 +70,6 @@ const formatBytes = (bytes?: number) => {
 // TYPES
 // ============================================================================
 
-/**
- * بنية الرسالة للإرسال إلى API
- * 
- * @property role - دور المرسل
- * @property content - المحتوى (نص أو مصفوفة متعددة الوسائط)
- * 
- * @note
- * يختلف عن Message في chatStore لأنه يدعم:
- * - المحتوى النصي البسيط
- * - المحتوى متعدد الأجزاء (نص + صور)
- */
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string | Array<{ 
@@ -131,27 +83,6 @@ interface ChatMessage {
 // HOOK IMPLEMENTATION
 // ============================================================================
 
-/**
- * Hook لإدارة الدردشة
- * 
- * @returns
- * - messages: رسائل المحادثة الحالية
- * - isLoading: هل جاري تحميل رد؟
- * - sendMessage: دالة إرسال رسالة جديدة
- * 
- * @example
- * ```tsx
- * const { messages, isLoading, sendMessage } = useChat();
- * 
- * const handleSend = () => {
- *   sendMessage('مرحباً!', []);
- * };
- * ```
- * 
- * @performance
- * - يستخدم useCallback لتجنب إعادة إنشاء الدوال
- * - يستخدم getState() للحصول على مراجع ثابتة للـ actions
- */
 export const useChat = () => {
   // ─────────────────────────────────────────────────────────────────────────
   // STATE SUBSCRIPTIONS
@@ -164,13 +95,6 @@ export const useChat = () => {
   // STORE ACTIONS (STABLE REFERENCES)
   // ─────────────────────────────────────────────────────────────────────────
   
-  /**
-   * الحصول على مراجع ثابتة للـ actions من المتجر
-   * 
-   * @optimization
-   * getState() يُرجع الحالة الحالية دون subscription
-   * هذا يمنع re-renders عند تغير الحالة
-   */
   const storeActions = useChatStore.getState();
   const addMessage = storeActions.addMessage;
   const updateMessage = storeActions.updateMessage;
@@ -178,48 +102,18 @@ export const useChat = () => {
   const setLoading = storeActions.setLoading;
   const setAssistantTyping = storeActions.setAssistantTyping;
   const getMessages = storeActions.getMessages;
+  const deleteMessage = storeActions.deleteMessage;
 
   // ─────────────────────────────────────────────────────────────────────────
   // SEND MESSAGE FUNCTION
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * إرسال رسالة جديدة
-   * 
-   * @param content - نص الرسالة
-   * @param attachments - المرفقات (صور/ملفات)
-   * 
-   * @flow
-   * 1. التحقق من المدخلات (Guard Clause)
-   * 2. إضافة رسالة المستخدم للمتجر
-   * 3. تفعيل حالات التحميل
-   * 4. تحضير الرسائل للـ API
-   * 5. إرسال الطلب
-   * 6. معالجة الـ Stream
-   * 7. تحديث حالة الرسالة
-   * 
-   * @errorHandling
-   * - 429: Rate Limit
-   * - 402: Payment Required
-   * - أخطاء الشبكة العامة
-   * 
-   * @throws لا يرمي استثناءات - يعرض toast بدلاً من ذلك
-   */
   const sendMessage = useCallback(
     async (content: string, attachments: Attachment[] = []) => {
-      // ═══════════════════════════════════════════════════════════════════════
-      // GUARD CLAUSES
-      // ═══════════════════════════════════════════════════════════════════════
-      
-      // التحقق من وجود محتوى
       if (!content.trim() && attachments.length === 0) {
-        return; // لا شيء للإرسال
+        return;
       }
 
-      // ═══════════════════════════════════════════════════════════════════════
-      // STEP 1: ADD USER MESSAGE TO STORE
-      // ═══════════════════════════════════════════════════════════════════════
-      
       addMessage({
         role: 'user',
         content,
@@ -227,49 +121,31 @@ export const useChat = () => {
         status: 'sent',
       });
 
-      // ═══════════════════════════════════════════════════════════════════════
-      // STEP 2: ACTIVATE LOADING STATES
-      // ═══════════════════════════════════════════════════════════════════════
-      
       setLoading(true);
-      setAssistantTyping(true); // يُظهر thinking indicator
+      setAssistantTyping(true);
 
-      // ═══════════════════════════════════════════════════════════════════════
-      // STEP 3: PREPARE MESSAGES FOR API
-      // ═══════════════════════════════════════════════════════════════════════
-      
-      // الحصول على الرسائل المحدثة (تتضمن رسالة المستخدم الجديدة)
       const currentMessages = getMessages();
       
-      // تحويل الرسائل لصيغة API
       const apiMessages: ChatMessage[] = currentMessages.map((msg) => ({
         role: msg.role,
         content: msg.content,
       }));
 
-      // ═══════════════════════════════════════════════════════════════════════
-      // STEP 4: BUILD MULTIPART CONTENT (IF ATTACHMENTS EXIST)
-      // ═══════════════════════════════════════════════════════════════════════
-      
       let userContent: ChatMessage['content'];
       
       if (attachments.length > 0) {
-        // بناء محتوى متعدد الأجزاء (نص + صور)
         const contentParts: Array<{ 
           type: string; 
           text?: string; 
           image_url?: { url: string } 
         }> = [];
         
-        // إضافة النص إن وجد
         if (content.trim()) {
           contentParts.push({ type: 'text', text: content });
         }
         
-        // إضافة المرفقات
         attachments.forEach((attachment) => {
           if (attachment.type === 'image' && attachment.base64 && attachment.mimeType) {
-            // صورة: تُرسل كـ base64 data URL
             contentParts.push({
               type: 'image_url',
               image_url: {
@@ -322,20 +198,14 @@ export const useChat = () => {
         
         userContent = contentParts;
       } else {
-        // محتوى نصي بسيط
         userContent = content;
       }
 
-      // إضافة رسالة المستخدم الجديدة للـ API
       apiMessages.push({
         role: 'user',
         content: userContent,
       });
 
-      // ═══════════════════════════════════════════════════════════════════════
-      // STEP 5: ADD PLACEHOLDER FOR ASSISTANT RESPONSE
-      // ═══════════════════════════════════════════════════════════════════════
-      
       const assistantId = addMessage({
         role: 'assistant',
         content: '',
@@ -343,10 +213,6 @@ export const useChat = () => {
         status: 'sending',
       });
 
-      // ═══════════════════════════════════════════════════════════════════════
-      // STEP 6: SEND REQUEST AND HANDLE STREAM
-      // ═══════════════════════════════════════════════════════════════════════
-      
       try {
         const response = await fetch(CHAT_URL, {
           method: 'POST',
@@ -357,96 +223,66 @@ export const useChat = () => {
           body: JSON.stringify({ messages: apiMessages }),
         });
 
-        // ─────────────────────────────────────────────────────────────────────
-        // ERROR HANDLING: HTTP ERRORS
-        // ─────────────────────────────────────────────────────────────────────
-        
         if (!response.ok) {
           const error = await response.json().catch(() => ({}));
           
-          // Rate Limit Error
           if (response.status === 429) {
             throw new Error('تم تجاوز الحد المسموح. يرجى الانتظار قليلاً (Rate Limit).');
           }
           
-          // Payment Required
           if (response.status === 402) {
-            throw new Error('نفدت الرصيد في بوابة الذكاء الاصطناعي (Payment Required). يرجى التأكد من توفر الرصيد في حساب Lovable الخاص بك للمتابعة.');
+            throw new Error('نفدت الرصيد في بوابة الذكاء الاصطناعي (Payment Required).');
           }
           
-          // Generic Server Error
           throw new Error(error.error || 'فشل في الحصول على الرد من الخادم');
         }
 
-        // Guard: التحقق من وجود body
         if (!response.body) {
           throw new Error('لا يوجد رد');
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // STREAM PROCESSING: SSE (Server-Sent Events)
-        // ─────────────────────────────────────────────────────────────────────
-        
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let textBuffer = '';
         let fullContent = '';
 
-        // قراءة الـ stream chunk by chunk
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          // فك ترميز البيانات وإضافتها للـ buffer
           textBuffer += decoder.decode(value, { stream: true });
 
-          // معالجة كل سطر مكتمل
           let newlineIndex: number;
           while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
             let line = textBuffer.slice(0, newlineIndex);
             textBuffer = textBuffer.slice(newlineIndex + 1);
 
-            // تنظيف السطر
             if (line.endsWith('\r')) line = line.slice(0, -1);
-            
-            // تجاهل التعليقات والأسطر الفارغة
             if (line.startsWith(':') || line.trim() === '') continue;
-            
-            // التحقق من صيغة SSE
             if (!line.startsWith('data: ')) continue;
 
             const jsonStr = line.slice(6).trim();
-            
-            // نهاية الـ stream
             if (jsonStr === '[DONE]') break;
 
             try {
-              // تحليل JSON واستخراج المحتوى
               const parsed = JSON.parse(jsonStr);
               const content = parsed.choices?.[0]?.delta?.content as string | undefined;
               
               if (content) {
-                // إخفاء thinking indicator عند وصول أول محتوى
                 if (fullContent === '') {
                   setAssistantTyping(false);
                 }
                 
-                // تحديث المحتوى
                 fullContent += content;
                 updateMessage(assistantId, fullContent, 'delivered');
               }
             } catch {
-              // JSON غير مكتمل: إعادته للـ buffer للمعالجة لاحقاً
               textBuffer = line + '\n' + textBuffer;
               break;
             }
           }
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // FINAL FLUSH: معالجة أي بيانات متبقية
-        // ─────────────────────────────────────────────────────────────────────
-        
         if (textBuffer.trim()) {
           for (let raw of textBuffer.split('\n')) {
             if (!raw) continue;
@@ -465,47 +301,173 @@ export const useChat = () => {
                 updateMessage(assistantId, fullContent);
               }
             } catch {
-              // تجاهل الأخطاء في النهاية
+              // تجاهل الأخطاء
             }
           }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════
-        // STEP 7: FINALIZE MESSAGE
-        // ═══════════════════════════════════════════════════════════════════════
-        
         setMessageStreaming(assistantId, false);
         updateMessage(assistantId, fullContent, 'read');
         
       } catch (error) {
-        // ═══════════════════════════════════════════════════════════════════════
-        // ERROR HANDLING: CATCH-ALL
-        // ═══════════════════════════════════════════════════════════════════════
-        
         console.error('Chat error:', error);
         
         const errorMessage = error instanceof Error 
           ? error.message 
           : 'حدث خطأ غير معروف';
         
-        // تحديث رسالة المساعد برسالة الخطأ
         updateMessage(assistantId, `عذراً، حدث خطأ: ${errorMessage}`);
         setMessageStreaming(assistantId, false);
         
-        // عرض إشعار للمستخدم
         toast.error(errorMessage);
         
       } finally {
-        // ═══════════════════════════════════════════════════════════════════════
-        // CLEANUP: Reset Loading States
-        // ═══════════════════════════════════════════════════════════════════════
-        
         setLoading(false);
         setAssistantTyping(false);
       }
     },
-    [] // المراجع من getState() ثابتة، لا حاجة لـ dependencies
+    []
   );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // REGENERATE LAST MESSAGE
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const regenerateLastMessage = useCallback(async () => {
+    const currentMessages = getMessages();
+    
+    // البحث عن آخر رسالة من المستخدم
+    let lastUserMessageIndex = -1;
+    for (let i = currentMessages.length - 1; i >= 0; i--) {
+      if (currentMessages[i].role === 'user') {
+        lastUserMessageIndex = i;
+        break;
+      }
+    }
+
+    if (lastUserMessageIndex === -1) {
+      toast.error('لا توجد رسالة لإعادة توليدها');
+      return;
+    }
+
+    const lastUserMessage = currentMessages[lastUserMessageIndex];
+    
+    // حذف آخر رسالة من المساعد
+    const lastAssistantMessage = currentMessages[currentMessages.length - 1];
+    if (lastAssistantMessage?.role === 'assistant') {
+      deleteMessage(lastAssistantMessage.id);
+    }
+
+    // إعادة إرسال رسالة المستخدم
+    setLoading(true);
+    setAssistantTyping(true);
+
+    // تحضير الرسائل (بدون آخر رسالة من المساعد)
+    const apiMessages: ChatMessage[] = currentMessages
+      .slice(0, lastUserMessageIndex + 1)
+      .map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+    const assistantId = addMessage({
+      role: 'assistant',
+      content: '',
+      isStreaming: true,
+      status: 'sending',
+    });
+
+    try {
+      const response = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        
+        if (response.status === 429) {
+          throw new Error('تم تجاوز الحد المسموح. يرجى الانتظار قليلاً.');
+        }
+        
+        if (response.status === 402) {
+          throw new Error('نفدت الرصيد في بوابة الذكاء الاصطناعي.');
+        }
+        
+        throw new Error(error.error || 'فشل في إعادة التوليد');
+      }
+
+      if (!response.body) {
+        throw new Error('لا يوجد رد');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = '';
+      let fullContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            
+            if (content) {
+              if (fullContent === '') {
+                setAssistantTyping(false);
+              }
+              
+              fullContent += content;
+              updateMessage(assistantId, fullContent, 'delivered');
+            }
+          } catch {
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
+        }
+      }
+
+      setMessageStreaming(assistantId, false);
+      updateMessage(assistantId, fullContent, 'read');
+      toast.success('تم إعادة التوليد بنجاح');
+      
+    } catch (error) {
+      console.error('Regenerate error:', error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'حدث خطأ غير معروف';
+      
+      updateMessage(assistantId, `عذراً، حدث خطأ: ${errorMessage}`);
+      setMessageStreaming(assistantId, false);
+      
+      toast.error(errorMessage);
+      
+    } finally {
+      setLoading(false);
+      setAssistantTyping(false);
+    }
+  }, []);
 
   // ─────────────────────────────────────────────────────────────────────────
   // RETURN VALUE
@@ -515,5 +477,6 @@ export const useChat = () => {
     messages,
     isLoading,
     sendMessage,
+    regenerateLastMessage,
   };
 };

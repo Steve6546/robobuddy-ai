@@ -243,65 +243,68 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   return (
     <div className="flex-shrink-0 border-t border-border bg-card/50 backdrop-blur-xl px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
       {/* ═══════════════════════════════════════════════════════════════════
-          ATTACHMENTS PREVIEW
+          CENTERED CONTAINER - ChatGPT Style
           ═══════════════════════════════════════════════════════════════════ */}
-      <div className="mb-3 flex flex-col gap-3">
-        {imageAttachments.length > 0 && (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {imageAttachments.map(attachment => (
-              <div
-                key={attachment.id}
-                className="relative group rounded-xl border border-border bg-muted/60 p-1"
-              >
-                <img
-                  src={attachment.url}
-                  alt={attachment.name}
-                  className="h-20 w-full rounded-lg object-cover"
-                />
-                <button
-                  onClick={() => removeAttachment(attachment.id)}
-                  aria-label="إزالة المرفق"
-                  className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring transition-opacity"
+      <div className="max-w-2xl mx-auto">
+        {/* ═══════════════════════════════════════════════════════════════════
+            ATTACHMENTS PREVIEW
+            ═══════════════════════════════════════════════════════════════════ */}
+        <div className="mb-3 flex flex-col gap-3">
+          {imageAttachments.length > 0 && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {imageAttachments.map(attachment => (
+                <div
+                  key={attachment.id}
+                  className="relative group rounded-xl border border-border bg-muted/60 p-1"
                 >
-                  <X className="h-3 w-3" strokeWidth={2} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+                  <img
+                    src={attachment.url}
+                    alt={attachment.name}
+                    className="h-20 w-full rounded-lg object-cover"
+                  />
+                  <button
+                    onClick={() => removeAttachment(attachment.id)}
+                    aria-label="إزالة المرفق"
+                    className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring transition-opacity"
+                  >
+                    <X className="h-3 w-3" strokeWidth={2} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
-        {fileAttachments.length > 0 && (
-          <div className="grid gap-2">
-            {fileAttachments.map(attachment => (
-              <div
-                key={attachment.id}
-                className="relative group flex items-center gap-3 rounded-xl border border-border bg-muted/60 px-3 py-2"
-              >
-                <FileText className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
-                <span className="text-sm text-foreground truncate">
-                  {attachment.name}
-                </span>
-                <button
-                  onClick={() => removeAttachment(attachment.id)}
-                  aria-label="إزالة المرفق"
-                  className="ml-auto rounded-full p-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          {fileAttachments.length > 0 && (
+            <div className="grid gap-2">
+              {fileAttachments.map(attachment => (
+                <div
+                  key={attachment.id}
+                  className="relative group flex items-center gap-3 rounded-xl border border-border bg-muted/60 px-3 py-2"
                 >
-                  <X className="h-3 w-3" strokeWidth={2} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  <FileText className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
+                  <span className="text-sm text-foreground truncate">
+                    {attachment.name}
+                  </span>
+                  <button
+                    onClick={() => removeAttachment(attachment.id)}
+                    aria-label="إزالة المرفق"
+                    className="ml-auto rounded-full p-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <X className="h-3 w-3" strokeWidth={2} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          INPUT ROW
-          ═══════════════════════════════════════════════════════════════════ */}
-      <div className="flex flex-col gap-3">
-        {/* ───────────────────────────────────────────────────────────────────
-            TEXT INPUT
-            ─────────────────────────────────────────────────────────────────── */}
-        <div className="relative">
+        {/* ═══════════════════════════════════════════════════════════════════
+            INPUT BOX - Compact & Centered
+            ═══════════════════════════════════════════════════════════════════ */}
+        <div className="relative rounded-2xl border border-border bg-muted/50 shadow-lg overflow-hidden">
+          {/* ───────────────────────────────────────────────────────────────────
+              TEXT INPUT
+              ─────────────────────────────────────────────────────────────────── */}
           <textarea
             ref={textareaRef}
             value={value}
@@ -322,49 +325,50 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
             rows={1}
             dir="auto"
             className={cn(
-              'w-full resize-none rounded-xl border border-border bg-muted/50 px-4 py-3',
+              'w-full resize-none bg-transparent px-4 py-3 pr-24',
               'text-foreground placeholder:text-muted-foreground text-base',
-              'focus:outline-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30',
+              'focus:outline-none',
               'transition-all duration-200',
               'disabled:opacity-50 disabled:cursor-not-allowed',
-              'max-h-40 min-h-[52px] overflow-y-auto'
+              'max-h-32 min-h-[48px] overflow-y-auto',
+              'border-0'
             )}
           />
-        </div>
 
-        {/* ───────────────────────────────────────────────────────────────────
-            ACTION ROW
-            ─────────────────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="إضافة مرفقات"
-            onClick={() => attachmentInputRef.current?.click()}
-            className={cn(
-              'h-11 w-11 rounded-xl border border-border bg-muted text-muted-foreground transition-all',
-              'hover:bg-accent hover:text-foreground',
-              'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
-            )}
-          >
-            <Plus className="h-5 w-5" strokeWidth={2} />
-          </Button>
+          {/* ───────────────────────────────────────────────────────────────────
+              ACTION BUTTONS - Inside Input
+              ─────────────────────────────────────────────────────────────────── */}
+          <div className="absolute right-2 bottom-2 flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="إضافة مرفقات"
+              onClick={() => attachmentInputRef.current?.click()}
+              className={cn(
+                'h-8 w-8 rounded-lg text-muted-foreground transition-all',
+                'hover:bg-accent hover:text-foreground',
+                'focus-visible:ring-2 focus-visible:ring-ring'
+              )}
+            >
+              <Plus className="h-4 w-4" strokeWidth={2} />
+            </Button>
 
-          <Button
-            onClick={handleSubmit}
-            disabled={disabled || (!value.trim() && pendingAttachments.length === 0)}
-            size="icon"
-            aria-label="إرسال الرسالة"
-            className={cn(
-              'h-11 w-11 rounded-xl border border-border transition-all duration-200',
-              'bg-foreground text-background hover:bg-foreground/90',
-              'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
-            )}
-          >
-            <Send className="h-4 w-4" strokeWidth={2} />
-          </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={disabled || (!value.trim() && pendingAttachments.length === 0)}
+              size="icon"
+              aria-label="إرسال الرسالة"
+              className={cn(
+                'h-8 w-8 rounded-lg transition-all duration-200',
+                'bg-foreground text-background hover:bg-foreground/90',
+                'focus-visible:ring-2 focus-visible:ring-ring',
+                'disabled:opacity-50 disabled:cursor-not-allowed'
+              )}
+            >
+              <Send className="h-3.5 w-3.5" strokeWidth={2} />
+            </Button>
+          </div>
         </div>
 
         {/* ───────────────────────────────────────────────────────────────────
@@ -378,14 +382,14 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           className="hidden"
           onChange={handleAttachmentSelect}
         />
-      </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          FOOTER NOTE
-          ═══════════════════════════════════════════════════════════════════ */}
-      <p className="text-xs text-muted-foreground text-center mt-3">
-        Roblox Expert · Gemini 3.0 Flash
-      </p>
+        {/* ═══════════════════════════════════════════════════════════════════
+            FOOTER NOTE
+            ═══════════════════════════════════════════════════════════════════ */}
+        <p className="text-xs text-muted-foreground text-center mt-3">
+          Roblox Expert · Gemini 3.0 Flash
+        </p>
+      </div>
     </div>
   );
 };
