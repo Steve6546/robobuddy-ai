@@ -19,9 +19,31 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ["react", "react-dom", "react/jsx-runtime"],
+    // Prevent duplicate React instances - CRITICAL for hooks to work
+    dedupe: [
+      "react", 
+      "react-dom", 
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@radix-ui/react-toast",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-tooltip",
+    ],
   },
   optimizeDeps: {
-    include: ["@tanstack/react-query", "@radix-ui/react-tooltip", "@radix-ui/react-toast", "@radix-ui/react-dropdown-menu"],
+    include: [
+      "react",
+      "react-dom",
+      "@tanstack/react-query", 
+      "@radix-ui/react-tooltip", 
+      "@radix-ui/react-toast", 
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-scroll-area",
+      "@radix-ui/react-avatar",
+    ],
+    // Force re-optimization
+    force: true,
   },
 }));
