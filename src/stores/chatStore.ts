@@ -285,6 +285,13 @@ interface ChatState {
   setMessageStreaming: (id: string, isStreaming: boolean) => void;
   
   /**
+   * حذف رسالة
+   * 
+   * @param id - معرف الرسالة للحذف
+   */
+  deleteMessage: (id: string) => void;
+  
+  /**
    * حفظ مسودة الرسالة
    * 
    * @param id - معرف المحادثة
@@ -517,6 +524,16 @@ export const useChatStore = create<ChatState>()(
             messages: c.messages.map((msg) =>
               msg.id === id ? { ...msg, isStreaming } : msg
             ),
+          })),
+        }));
+      },
+
+      deleteMessage: (id) => {
+        set((state) => ({
+          conversations: state.conversations.map((c) => ({
+            ...c,
+            messages: c.messages.filter((msg) => msg.id !== id),
+            updatedAt: new Date(),
           })),
         }));
       },

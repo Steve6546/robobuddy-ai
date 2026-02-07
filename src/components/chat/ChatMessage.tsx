@@ -7,29 +7,16 @@
  * - المرفقات (صور/ملفات)
  * - المحتوى (مع دعم streaming)
  * - مؤشر التفكير (thinking indicator)
- * 
- * @note
- * تمت إزالة الأيقونات الدائرية للمرسل حسب طلب المستخدم.
- * الآن يظهر فقط اسم المرسل بتصميم نظيف.
- * 
- * @dependencies
- * - ThinkingIndicator: مؤشر التحميل الدائري
- * - StreamingText: عرض النص المتدفق
- * 
- * @performance
- * - يستخدم memo لتجنب re-renders غير ضرورية
- * - يتجاهل التحديثات إذا لم تتغير الرسالة
- * 
- * @accessibility
- * - aria-live للمحتوى المتدفق
- * - تباين ألوان مناسب
+ * - أزرار النسخ وإعادة التوليد
  */
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Message } from '@/stores/chatStore';
 import { ThinkingIndicator } from './ThinkingIndicator';
 import { StreamingText } from './StreamingText';
+import { Copy, Check, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 // ============================================================================
 // TYPES
@@ -38,6 +25,10 @@ import { StreamingText } from './StreamingText';
 interface ChatMessageProps {
   /** بيانات الرسالة للعرض */
   message: Message;
+  /** هل هذه الرسالة الأخيرة؟ (لإظهار زر الإعادة) */
+  isLastAssistant?: boolean;
+  /** دالة إعادة التوليد */
+  onRegenerate?: () => void;
 }
 
 // ============================================================================
@@ -46,20 +37,14 @@ interface ChatMessageProps {
 
 /**
  * مكون عرض الرسالة
- * 
- * @memoized لتحسين الأداء
- * 
- * @states
- * - isWaiting: الرسالة في حالة انتظار (isStreaming=true, content='')
- * - isStreaming: الرسالة قيد البث (isStreaming=true, content!='')
- * - completed: الرسالة مكتملة (isStreaming=false)
- * 
- * @example
- * ```tsx
- * <ChatMessage message={userMessage} />
- * ```
  */
-export const ChatMessage = memo(({ message }: ChatMessageProps) => {
+export const ChatMessage = memo(({ message, isLastAssistant, onRegenerate }: ChatMessageProps) => {
+  // ─────────────────────────────────────────────────────────────────────────
+  // STATE
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  const [copied, setCopied] = useState(false);
+
   // ─────────────────────────────────────────────────────────────────────────
   // DERIVED STATE
   // ─────────────────────────────────────────────────────────────────────────
@@ -67,21 +52,38 @@ export const ChatMessage = memo(({ message }: ChatMessageProps) => {
   /** هل الرسالة من المستخدم؟ */
   const isUser = message.role === 'user';
   
-  /** 
-   * هل في حالة انتظار؟
-   * 
-   * @condition isStreaming=true AND content=''
-   * @shows ThinkingIndicator
-   */
+  /** هل في حالة انتظار؟ */
   const isWaiting = message.isStreaming && !message.content;
   
-  /**
-   * هل في حالة بث؟
-   * 
-   * @condition isStreaming=true AND content!=''
-   * @shows StreamingText with cursor
-   */
+  /** هل في حالة بث؟ */
   const isStreaming = message.isStreaming && !!message.content;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // HANDLERS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * نسخ محتوى الرسالة
+   */
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      toast.success('تم النسخ!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('فشل في النسخ');
+    }
+  };
+
+  /**
+   * إعادة توليد الرد
+   */
+  const handleRegenerate = () => {
+    if (onRegenerate) {
+      onRegenerate();
+    }
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -96,12 +98,9 @@ export const ChatMessage = memo(({ message }: ChatMessageProps) => {
           : 'bg-card/30 border-l-2 border-foreground/10'
       )}
     >
-      {/* ═══════════════════════════════════════════════════════════════════
-          MESSAGE CONTENT - Clean Layout without Avatar
-          ═══════════════════════════════════════════════════════════════════ */}
       <div className="max-w-3xl mx-auto space-y-2">
         {/* ───────────────────────────────────────────────────────────────────
-            SENDER NAME - Clean Text Only
+            SENDER NAME
             ─────────────────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2">
           <span className={cn(
@@ -120,14 +119,12 @@ export const ChatMessage = memo(({ message }: ChatMessageProps) => {
             {message.attachments.map((attachment) => (
               <div key={attachment.id} className="relative group">
                 {attachment.type === 'image' ? (
-                  /* صورة */
                   <img
                     src={attachment.url}
                     alt={attachment.name}
                     className="h-20 rounded-lg border border-border object-cover"
                   />
                 ) : (
-                  /* ملف */
                   <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border">
                     <span className="text-sm text-foreground">{attachment.name}</span>
                   </div>
@@ -139,24 +136,16 @@ export const ChatMessage = memo(({ message }: ChatMessageProps) => {
 
         {/* ───────────────────────────────────────────────────────────────────
             CONTENT AREA
-            
-            @states
-            - Waiting: shows ThinkingIndicator
-            - Streaming: shows StreamingText with cursor
-            - Complete: shows StreamingText without cursor
-            
-            @accessibility
-            - aria-live="polite" للمحتوى المتدفق
             ─────────────────────────────────────────────────────────────────── */}
         <div 
           className="relative min-h-[1.5rem]"
           aria-live={isStreaming ? "polite" : "off"}
           aria-atomic="false"
         >
-          {/* Thinking indicator - visible when waiting */}
+          {/* Thinking indicator */}
           <ThinkingIndicator isVisible={isWaiting} className="absolute inset-0" />
           
-          {/* Text content - fades in when content arrives */}
+          {/* Text content */}
           <div 
             className={cn(
               'transition-opacity duration-300 ease-out',
@@ -171,10 +160,57 @@ export const ChatMessage = memo(({ message }: ChatMessageProps) => {
             )}
           </div>
         </div>
+
+        {/* ───────────────────────────────────────────────────────────────────
+            ACTION BUTTONS - Copy & Regenerate (Assistant only)
+            ─────────────────────────────────────────────────────────────────── */}
+        {!isUser && !isWaiting && !isStreaming && message.content && (
+          <div className="flex items-center gap-2 pt-2 border-t border-border/30">
+            {/* Copy Button */}
+            <button
+              onClick={handleCopy}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs",
+                "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                "transition-colors duration-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              )}
+              aria-label="نسخ الرسالة"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  <span>تم النسخ</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5" />
+                  <span>نسخ</span>
+                </>
+              )}
+            </button>
+
+            {/* Regenerate Button - Only for last assistant message */}
+            {isLastAssistant && onRegenerate && (
+              <button
+                onClick={handleRegenerate}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs",
+                  "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                  "transition-colors duration-200",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                )}
+                aria-label="إعادة التوليد"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span>إعادة</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 });
 
-// Required for React DevTools
 ChatMessage.displayName = 'ChatMessage';
