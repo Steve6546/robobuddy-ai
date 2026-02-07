@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { UserMenu } from '@/components/auth/UserMenu';
 import { useState, useMemo } from 'react';
 
 // ============================================================================
@@ -390,12 +391,10 @@ function SidebarContent({
       </ScrollArea>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          FOOTER
+          FOOTER - User Menu
           ═══════════════════════════════════════════════════════════════════ */}
-      <div className="flex-shrink-0 p-3 border-t border-border">
-        <p className="text-xs text-muted-foreground text-center">
-          المحادثات محفوظة محلياً
-        </p>
+      <div className="flex-shrink-0 border-t border-border">
+        <UserMenu />
       </div>
     </div>
   );

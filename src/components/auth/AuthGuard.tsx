@@ -6,8 +6,8 @@
  * إذا لم يكن المستخدم مسجلاً
  */
 
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthGuardProps {
@@ -16,34 +16,92 @@ interface AuthGuardProps {
 
 export const AuthGuard = ({ children }: AuthGuardProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // منع إعادة التوجيه المتكررة
+  const hasCheckedSession = useRef(false);
 
   useEffect(() => {
+    // منع التحقق المتكرر
+    if (hasCheckedSession.current) return;
+    
+    /**
+     * التحقق من الجلسة الحالية أولاً
+     * 
+     * @important
+     * يجب استدعاء getSession قبل onAuthStateChange
+     * لضمان استمرار الجلسة بعد تحديث الصفحة
+     */
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session check error:', error);
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          navigate('/auth', { replace: true });
+          return;
+        }
+
+        if (session) {
+          setIsAuthenticated(true);
+          hasCheckedSession.current = true;
+        } else {
+          setIsAuthenticated(false);
+          navigate('/auth', { replace: true });
+        }
+        
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Unexpected session error:', err);
+        setIsLoading(false);
+        navigate('/auth', { replace: true });
+      }
+    };
+
+    checkSession();
+
     // الاستماع لتغييرات حالة المصادقة
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setIsAuthenticated(true);
-        setIsLoading(false);
-      } else {
-        setIsAuthenticated(false);
-        setIsLoading(false);
-        navigate('/auth');
+      // معالجة الأحداث المختلفة
+      switch (event) {
+        case 'SIGNED_IN':
+        case 'TOKEN_REFRESHED':
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          hasCheckedSession.current = true;
+          break;
+          
+        case 'SIGNED_OUT':
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          hasCheckedSession.current = false;
+          navigate('/auth', { replace: true });
+          break;
+          
+        case 'INITIAL_SESSION':
+          // تم معالجته بواسطة getSession
+          if (session) {
+            setIsAuthenticated(true);
+            hasCheckedSession.current = true;
+          }
+          setIsLoading(false);
+          break;
+          
+        default:
+          // للأحداث الأخرى، التحقق من وجود جلسة
+          if (session) {
+            setIsAuthenticated(true);
+          }
+          break;
       }
-    });
-
-    // التحقق من الجلسة الحالية
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setIsAuthenticated(true);
-      } else {
-        navigate('/auth');
-      }
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   if (isLoading) {
     return (
